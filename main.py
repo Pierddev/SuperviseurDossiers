@@ -1,3 +1,4 @@
+import charset_normalizer
 import logging
 import os
 import requests
@@ -109,3 +110,22 @@ def creer_scan(connexion_mysql: mysql.connector.MySQLConnection) -> int | None:
     except mysql.connector.Error as err:
         envoyer_notif_teams(f"Erreur lors de la création du scan : {err}")
         return None
+
+
+def terminer_scan(
+    connexion_mysql: mysql.connector.MySQLConnection, id_scan: int, statut: str
+) -> None:
+    """
+    Termine un scan en mettant à jour son statut dans la table sudo_scans.
+    """
+    try:
+        # Crée un curseur pour exécuter des commandes SQL
+        curseur = connexion_mysql.cursor()
+        curseur.execute(
+            "UPDATE sudo_scans SET scan_statut = %s WHERE id_scan = %s",
+            (statut, id_scan),
+        )
+        connexion_mysql.commit()
+        curseur.close()
+    except mysql.connector.Error as err:
+        envoyer_notif_teams(f"Erreur lors de la terminaison du scan : {err}")
