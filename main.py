@@ -34,6 +34,21 @@ def deconnecter_base_de_donnees(
     connexion.close()
 
 
+def envoyer_notif_teams(message: str) -> int | None:
+    """
+    Envoie une notification à Microsoft Teams.
+    """
+    try:
+        url = os.getenv("TEAMS_WEBHOOK_URL")
+        headers = {"Content-Type": "application/json"}
+        payload = {"text": message}
+        response = requests.post(url, headers=headers, data=json.dumps(payload))
+        return response.status_code
+    except Exception as e:
+        print(f"Erreur lors de l'envoi de la notification : {e}")
+        return None
+
+
 def calculer_taille_dossier(chemin_dossier: str) -> int:
     """
     Calcule la taille totale d'un dossier en incluant tous les sous-dossiers et fichiers.
