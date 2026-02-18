@@ -1,3 +1,4 @@
+import logging
 import os
 import requests
 import json
@@ -5,6 +6,15 @@ import mysql.connector
 import dotenv
 
 dotenv.load_dotenv()
+
+# Configure le logging pour écrire les erreurs dans un fichier log
+# (essentiellement lorsque les notifications Teams échouent)
+logging.basicConfig(
+    filename="superviseur.log",
+    level=logging.ERROR,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 def connecter_base_de_donnees() -> mysql.connector.MySQLConnection | None:
@@ -20,8 +30,8 @@ def connecter_base_de_donnees() -> mysql.connector.MySQLConnection | None:
             database=os.getenv("DB_NAME"),
         )
     except mysql.connector.Error as err:
-        # TODO: Envoyer notification TEAMS
-        print(f"Erreur de connexion à la base de données : {err}")
+        # Envoie une notification à Microsoft Teams si la connexion à la base de données échoue
+        envoyer_notif_teams(f"Erreur de connexion à la base de données : {err}")
         return None
 
 
@@ -34,7 +44,7 @@ def deconnecter_base_de_donnees(
     connexion.close()
 
 
-def envoyer_notif_teams(message: str) -> int | None:
+def envoyer_notif_teams(message: str) -> None:
     """
     Envoie une notification à Microsoft Teams.
     """
@@ -42,11 +52,13 @@ def envoyer_notif_teams(message: str) -> int | None:
         url = os.getenv("TEAMS_WEBHOOK_URL")
         headers = {"Content-Type": "application/json"}
         payload = {"text": message}
-        response = requests.post(url, headers=headers, data=json.dumps(payload))
-        return response.status_code
-    except Exception as e:
-        print(f"Erreur lors de l'envoi de la notification : {e}")
-        return None
+        response = requests.post(
+            url, headers=headers, data=json.dumps(payload), timeout=10
+        )
+        # Lève une HTTPError si le code de retour est 4xx ou 5xx
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Erreur lors de l'envoi de la notification : {e}")
 
 
 def calculer_taille_dossier(chemin_dossier: str) -> int:
@@ -78,7 +90,3 @@ def lister_tous_les_dossier(chemin_racine: str) -> list[str]:
     return liste_des_dossiers
 
 
-liste_des_dossiers = lister_tous_les_dossier("D:\\Exemple\\")
-print(liste_des_dossiers)
-
-print(connecter_base_de_donnees())
