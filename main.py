@@ -1,11 +1,11 @@
 import mysql.connector.cursor_cext
-import charset_normalizer
 import logging
 import os
 import requests
 import json
 import mysql.connector
 import dotenv
+from datetime import datetime
 
 dotenv.load_dotenv()
 
@@ -77,10 +77,6 @@ def calculer_taille_dossier(chemin_dossier: str) -> int:
             except (OSError, PermissionError):
                 # Ignore les erreurs d'accès
                 pass
-    # taille en Mo
-    print(
-        f"Taille du dossier {chemin_dossier} : {taille_totale / (1024 * 1024):.2f} Mo"
-    )
     return taille_totale
 
 
@@ -140,10 +136,12 @@ def inserer_ou_mettre_a_jour_dossier(
     connexion_mysql: mysql.connector.MySQLConnection,
     chemin_dossier: str,
     taille_dossier: int,
-) -> None:
+) -> dict[str, str] | None:
     """
     Insère ou met à jour un dossier dans la table sudo_dossiers.
+    Retourne un dictionnaire avec les informations du dossier la modification de sa taille est supérieure à la taille définie dans le fichier .env.
     """
+    dictionnaire_de_retour = None
     try:
         # Crée un curseur pour exécuter des commandes SQL
         curseur = connexion_mysql.cursor()
@@ -153,6 +151,7 @@ def inserer_ou_mettre_a_jour_dossier(
         )
         resultat_dossier = curseur.fetchone()
 
+        # Gestion des nouveaux dossiers
         if resultat_dossier is None:
             # Insère le dossier
             curseur.execute(
@@ -164,6 +163,14 @@ def inserer_ou_mettre_a_jour_dossier(
                 "INSERT INTO sudo_tailles (id_dossier, taille_actuel_scan) VALUES (%s, %s)",
                 (id_dossier, taille_dossier),
             )
+
+            if taille_dossier > int(os.getenv("MODIFICATION_TAILLE_IMPORTANTE")):
+                # Retourne le dictionnaire avec les informations du nouveau dossier pour l'insérer dans la notification Teams
+                dictionnaire_de_retour = {
+                    "type": "nouveau",
+                    "chemin": chemin_dossier,
+                    "taille": taille_dossier,
+                }
         else:
             id_dossier = resultat_dossier[0]
             # Marquer comme non nouveau
@@ -172,14 +179,42 @@ def inserer_ou_mettre_a_jour_dossier(
                     "UPDATE sudo_dossiers SET dossier_est_nouveau = 0 WHERE id_dossier = %s",
                     (id_dossier,),
                 )
+
+            # Récupérer les tailles actuelles nécessaire pour calculer la différence
+            curseur.execute(
+                "SELECT * FROM sudo_tailles WHERE id_dossier = %s",
+                (id_dossier,),
+            )
+            resultat_tailles = curseur.fetchone()
+            taille_actuel_scan = resultat_tailles[1]
+
             # Décaler les tailles en une seule requête
             curseur.execute(
                 "UPDATE sudo_tailles SET taille_dernier_scan = taille_actuel_scan, taille_actuel_scan = %s WHERE id_dossier = %s",
                 (taille_dossier, id_dossier),
             )
 
+            difference_taille_dossier = abs(
+                int(taille_actuel_scan) - int(taille_dossier)
+            )
+
+            if difference_taille_dossier > int(
+                os.getenv("MODIFICATION_TAILLE_IMPORTANTE")
+            ):
+                # Retourne le dictionnaire si la taille de la modification est supérieure à la taille définie dans le fichier .env
+                dictionnaire_de_retour = {
+                    "type": "modification",
+                    "chemin": chemin_dossier,
+                    "difference": int(taille_dossier) - int(taille_actuel_scan),
+                }
+
         connexion_mysql.commit()
         curseur.close()
+
+        if dictionnaire_de_retour:
+            return dictionnaire_de_retour
+        else:
+            return None
     except mysql.connector.Error as err:
         envoyer_notif_teams(
             f"Erreur lors de l'insertion ou de la mise à jour du dossier : {err}"
@@ -194,12 +229,46 @@ def scanner() -> None:
     id_scan = creer_scan(connexion_mysql)
     liste_dossiers = lister_tous_les_dossier(os.getenv("CHEMIN_RACINE"))
 
+    nouveaux_dossiers = []
+    dossiers_modifies = []
+
     for dossier in liste_dossiers:
         taille_dossier = calculer_taille_dossier(dossier)
         taille_en_mo = round(
             taille_dossier / (1024**2), 2
         )  # Convertit en Mo avec 2 décimales
-        inserer_ou_mettre_a_jour_dossier(connexion_mysql, dossier, taille_en_mo)
+        resultat = inserer_ou_mettre_a_jour_dossier(
+            connexion_mysql, dossier, taille_en_mo
+        )
+
+        if resultat:
+            if resultat["type"] == "nouveau":
+                nouveaux_dossiers.append(resultat)
+            elif resultat["type"] == "modification":
+                dossiers_modifies.append(resultat)
+
+    # Construction du message pour la notification Teams
+    message = f"Scan du {datetime.now().strftime('%d/%m/%Y à %H:%M')}:\n\n"
+
+    if len(nouveaux_dossiers) > 0:
+        message += "\nNouveaux dossiers:\n"
+        for dossier in nouveaux_dossiers:
+            message += f"- {dossier['chemin']} (+{dossier['taille']} Mo)\n"
+
+    if len(dossiers_modifies) > 0:
+        message += "\nDossiers modifiés:\n"
+        for dossier in dossiers_modifies:
+            signe = "+" if dossier["difference"] > 0 else ""
+            message += f"- {dossier['chemin']} ({signe}{dossier['difference']} Mo)\n"
+
+    message += "\n\nScan terminé avec succès"
+
+    if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0:
+        message += "\n\nAucun dossier modifié ou nouveau"
+
     terminer_scan(connexion_mysql, id_scan, "termine")
-    envoyer_notif_teams("Scan terminé avec succès")
+    envoyer_notif_teams(message)
     deconnecter_base_de_donnees(connexion_mysql)
+
+
+scanner()
