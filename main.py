@@ -77,6 +77,10 @@ def calculer_taille_dossier(chemin_dossier: str) -> int:
             except (OSError, PermissionError):
                 # Ignore les erreurs d'accès
                 pass
+    # taille en Mo
+    print(
+        f"Taille du dossier {chemin_dossier} : {taille_totale / (1024 * 1024):.2f} Mo"
+    )
     return taille_totale
 
 
@@ -181,3 +185,21 @@ def inserer_ou_mettre_a_jour_dossier(
             f"Erreur lors de l'insertion ou de la mise à jour du dossier : {err}"
         )
 
+
+def scanner() -> None:
+    """
+    Scanne tous les dossiers à partir d'un chemin racine.
+    """
+    connexion_mysql = connecter_base_de_donnees()
+    id_scan = creer_scan(connexion_mysql)
+    liste_dossiers = lister_tous_les_dossier(os.getenv("CHEMIN_RACINE"))
+
+    for dossier in liste_dossiers:
+        taille_dossier = calculer_taille_dossier(dossier)
+        taille_en_mo = round(
+            taille_dossier / (1024**2), 2
+        )  # Convertit en Mo avec 2 décimales
+        inserer_ou_mettre_a_jour_dossier(connexion_mysql, dossier, taille_en_mo)
+    terminer_scan(connexion_mysql, id_scan, "termine")
+    envoyer_notif_teams("Scan terminé avec succès")
+    deconnecter_base_de_donnees(connexion_mysql)
