@@ -1,3 +1,4 @@
+import mysql.connector.cursor_cext
 import charset_normalizer
 import logging
 import os
@@ -129,3 +130,54 @@ def terminer_scan(
         curseur.close()
     except mysql.connector.Error as err:
         envoyer_notif_teams(f"Erreur lors de la terminaison du scan : {err}")
+
+
+def inserer_ou_mettre_a_jour_dossier(
+    connexion_mysql: mysql.connector.MySQLConnection,
+    chemin_dossier: str,
+    taille_dossier: int,
+) -> None:
+    """
+    Insère ou met à jour un dossier dans la table sudo_dossiers.
+    """
+    try:
+        # Crée un curseur pour exécuter des commandes SQL
+        curseur = connexion_mysql.cursor()
+        # Vérifie si le dossier existe déjà
+        curseur.execute(
+            "SELECT * FROM sudo_dossiers WHERE dossier_chemin = %s", (chemin_dossier,)
+        )
+        resultat_dossier = curseur.fetchone()
+
+        if resultat_dossier is None:
+            # Insère le dossier
+            curseur.execute(
+                "INSERT INTO sudo_dossiers (dossier_chemin, dossier_est_nouveau) VALUES (%s, %s)",
+                (chemin_dossier, 1),
+            )
+            id_dossier = curseur.lastrowid
+            curseur.execute(
+                "INSERT INTO sudo_tailles (id_dossier, taille_actuel_scan) VALUES (%s, %s)",
+                (id_dossier, taille_dossier),
+            )
+        else:
+            id_dossier = resultat_dossier[0]
+            # Marquer comme non nouveau
+            if resultat_dossier[2] == 1:
+                curseur.execute(
+                    "UPDATE sudo_dossiers SET dossier_est_nouveau = 0 WHERE id_dossier = %s",
+                    (id_dossier,),
+                )
+            # Décaler les tailles en une seule requête
+            curseur.execute(
+                "UPDATE sudo_tailles SET taille_dernier_scan = taille_actuel_scan, taille_actuel_scan = %s WHERE id_dossier = %s",
+                (taille_dossier, id_dossier),
+            )
+
+        connexion_mysql.commit()
+        curseur.close()
+    except mysql.connector.Error as err:
+        envoyer_notif_teams(
+            f"Erreur lors de l'insertion ou de la mise à jour du dossier : {err}"
+        )
+
