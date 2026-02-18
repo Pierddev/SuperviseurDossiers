@@ -90,3 +90,22 @@ def lister_tous_les_dossier(chemin_racine: str) -> list[str]:
     return liste_des_dossiers
 
 
+def creer_scan(connexion_mysql: mysql.connector.MySQLConnection) -> int | None:
+    """
+    Crée un nouveau scan dans la table sudo_scans avec le statut 'en_cours'.
+    Retourne l'id_scan créé.
+    """
+    try:
+        # Crée un curseur pour exécuter des commandes SQL
+        curseur = connexion_mysql.cursor()
+        curseur.execute(
+            "INSERT INTO sudo_scans (scan_date, scan_statut) VALUES (NOW(), 'en_cours')"
+        )
+        connexion_mysql.commit()
+        # Récupère l'id du dernier enregistrement inséré
+        id_scan = curseur.lastrowid
+        curseur.close()
+        return id_scan
+    except mysql.connector.Error as err:
+        envoyer_notif_teams(f"Erreur lors de la création du scan : {err}")
+        return None
