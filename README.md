@@ -6,13 +6,13 @@ Script Python déployé sur **Windows Server** qui analyse automatiquement la ta
 
 - [Fonctionnalités](#-fonctionnalités)
 - [Prérequis](#-prérequis)
-- [Base de données](#%EF%B8%8F-base-de-données)
+- [Base de données](#-base-de-données)
     - [Schéma SQL](#schéma-sql)
-- [Configuration](#%EF%B8%8F-configuration)
+- [Configuration](#-configuration)
 - [Installation](#-installation)
 - [Déploiement sur Windows Server](#-déploiement-sur-windows-server)
 - [Structure du projet](#-structure-du-projet)
-- [Technologies](#%EF%B8%8F-technologies)
+- [Technologies](#-technologies)
 
 ## 🎯 Fonctionnalités
 
