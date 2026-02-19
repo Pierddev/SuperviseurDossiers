@@ -235,8 +235,8 @@ def scanner() -> None:
     for dossier in liste_dossiers:
         taille_dossier = calculer_taille_dossier(dossier)
         taille_en_mo = round(
-            taille_dossier / (1024**2), 2
-        )  # Convertit en Mo avec 2 décimales
+            taille_dossier / (1024**2)
+        )  # Convertit en Mo (arrondi entier)
         resultat = inserer_ou_mettre_a_jour_dossier(
             connexion_mysql, dossier, taille_en_mo
         )
