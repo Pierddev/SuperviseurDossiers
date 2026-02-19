@@ -2,6 +2,18 @@
 
 Script Python déployé sur **Windows Server** qui analyse automatiquement la taille de tous les dossiers d'un chemin racine, stocke les résultats dans une base de données **MySQL** et envoie des notifications **Microsoft Teams** en cas de changements importants.
 
+## 📑 Sommaire
+
+- [Fonctionnalités](#-fonctionnalités)
+- [Prérequis](#-prérequis)
+- [Base de données](#%EF%B8%8F-base-de-données)
+    - [Schéma SQL](#schéma-sql)
+- [Configuration](#%EF%B8%8F-configuration)
+- [Installation](#-installation)
+- [Déploiement sur Windows Server](#-déploiement-sur-windows-server)
+- [Structure du projet](#-structure-du-projet)
+- [Technologies](#%EF%B8%8F-technologies)
+
 ## 🎯 Fonctionnalités
 
 - **Scan récursif** — Parcourt tous les dossiers et sous-dossiers à partir d'un chemin racine configurable

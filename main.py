@@ -301,6 +301,18 @@ if __name__ == "__main__":
 
     delai_verification = int(os.getenv("DELAI_VERIFICATION", 300))
 
+    print("=" * 60)
+    print("🚀 Superviseur de Dossiers - Démarré")
+    print("=" * 60)
+    print(f"📅 Prochain scan prévu à : {heure_scan}")
+    print(f"⏱️ Vérification toutes les : {delai_verification} secondes")
+    print("-" * 60)
+    print("ℹ️ NOTE : Si vous avez configuré la tâche planifiée Windows,")
+    print("ce script démarrera automatiquement en arrière-plan")
+    print("à chaque redémarrage du serveur (sans fenêtre visible).")
+    print("=" * 60)
+    print("Le programme est en cours d'execution... Ne fermez pas cette fenetre")
+
     # Boucle infinie pour que le programme continue de tourner
     while True:
         schedule.run_pending()
