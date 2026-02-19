@@ -120,7 +120,6 @@ python main.py
 ### 1. Générer l'exécutable
 
 ```bash
-pip install pyinstaller
 pyinstaller --onefile --name SuperviseurDossiers main.py
 ```
 
