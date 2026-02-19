@@ -30,6 +30,9 @@ Le script utilise 3 tables :
 ### Schéma SQL
 
 ```sql
+CREATE DATABASE IF NOT EXISTS superviseur_dossiers;
+USE superviseur_dossiers;
+
 CREATE TABLE IF NOT EXISTS sudo_dossiers (
   id_dossier INT NOT NULL AUTO_INCREMENT,
   dossier_chemin VARCHAR(300) NOT NULL,
