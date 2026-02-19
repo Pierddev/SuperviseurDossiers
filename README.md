@@ -143,7 +143,7 @@ C:\SuperviseurDossiers\
 Créer une tâche planifiée (en **administrateur**) :
 
 ```cmd
-schtasks /create /tn "SuperviseurDossiers" /tr "C:\SuperviseurDossiers\SuperviseurDossiers.exe" /sc onstart /ru SYSTEM /rl HIGHEST
+schtasks /create /tn "SuperviseurDossiers" /tr "C:\votre_chemin\SuperviseurDossiers\SuperviseurDossiers.exe" /sc onstart /ru SYSTEM /rl HIGHEST
 ```
 
 | Paramètre     | Signification                    |
