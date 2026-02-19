@@ -120,7 +120,8 @@ python main.py
 ### 1. Générer l'exécutable
 
 ```bash
-pyinstaller --onefile --name SuperviseurDossiers main.py
+pip install pyinstaller
+pyinstaller --onefile --name SuperviseurDossiers --icon=icone.ico main.py
 ```
 
 Le fichier `dist/SuperviseurDossiers.exe` est créé.
