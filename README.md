@@ -86,7 +86,7 @@ MODIFICATION_TAILLE_IMPORTANTE=100
 
 ```bash
 # Cloner le dépôt
-git clone https://github.com/votre-utilisateur/SuperviseurDossiers.git
+git clone https://github.com/Pierddev/SuperviseurDossiers.git
 cd SuperviseurDossiers
 
 # Créer l'environnement virtuel
