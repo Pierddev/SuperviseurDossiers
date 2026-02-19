@@ -80,6 +80,9 @@ HEURE_SCAN="17:30"
 # Seuls les nouveaux dossiers et les variations de taille dépassant ce seuil
 # seront inclus dans la notification Teams
 MODIFICATION_TAILLE_IMPORTANTE=100
+
+# Délai entre chaque vérification de l'heure (en secondes, ici 5 minutes)
+DELAI_VERIFICATION=300
 ```
 
 ## 🚀 Installation
@@ -108,6 +111,45 @@ cp .env.example .env
 # Lancer le script
 python main.py
 ```
+
+## 📦 Déploiement sur Windows Server
+
+### 1. Générer l'exécutable
+
+```bash
+pip install pyinstaller
+pyinstaller --onefile --name SuperviseurDossiers main.py
+```
+
+Le fichier `dist/SuperviseurDossiers.exe` est créé.
+
+### 2. Copier les fichiers sur le serveur
+
+Placer ces 2 fichiers dans un dossier sur le serveur (ex: `C:\SuperviseurDossiers\`) :
+
+```
+C:\SuperviseurDossiers\
+├── SuperviseurDossiers.exe    # L'exécutable
+└── .env                       # Configuration adaptée au serveur
+```
+
+> ⚠️ Le fichier `.env` doit être adapté avec les paramètres du serveur (BDD, webhook, chemin racine à analyser).
+
+### 3. Démarrage automatique au boot
+
+Créer une tâche planifiée (en **administrateur**) :
+
+```cmd
+schtasks /create /tn "SuperviseurDossiers" /tr "C:\SuperviseurDossiers\SuperviseurDossiers.exe" /sc onstart /ru SYSTEM /rl HIGHEST
+```
+
+| Paramètre     | Signification                    |
+| ------------- | -------------------------------- |
+| `/tn`         | Nom de la tâche                  |
+| `/tr`         | Chemin vers le .exe              |
+| `/sc onstart` | Se lance au démarrage du serveur |
+| `/ru SYSTEM`  | Tourne sous le compte SYSTEM     |
+| `/rl HIGHEST` | Privilèges élevés                |
 
 ## 📬 Exemple de notification Teams
 

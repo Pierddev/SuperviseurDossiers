@@ -1,18 +1,26 @@
-import mysql.connector.cursor_cext
 import logging
 import os
+import sys
 import requests
 import json
+import time
 import mysql.connector
 import dotenv
+import schedule
 from datetime import datetime
 
-dotenv.load_dotenv()
+# Détermine le dossier où se trouve l'exécutable (ou le script)
+if getattr(sys, "frozen", False):
+    DOSSIER_APP = os.path.dirname(sys.executable)
+else:
+    DOSSIER_APP = os.path.dirname(os.path.abspath(__file__))
+
+dotenv.load_dotenv(os.path.join(DOSSIER_APP, ".env"))
 
 # Configure le logging pour écrire les erreurs dans un fichier log
 # (essentiellement lorsque les notifications Teams échouent)
 logging.basicConfig(
-    filename="superviseur.log",
+    filename=os.path.join(DOSSIER_APP, "superviseur.log"),
     level=logging.ERROR,
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
@@ -225,51 +233,75 @@ def scanner() -> None:
     """
     Scanne tous les dossiers à partir d'un chemin racine.
     """
-    connexion_mysql = connecter_base_de_donnees()
-    id_scan = creer_scan(connexion_mysql)
-    liste_dossiers = lister_tous_les_dossier(os.getenv("CHEMIN_RACINE"))
+    connexion_mysql = None
+    id_scan = None
+    try:
+        connexion_mysql = connecter_base_de_donnees()
+        id_scan = creer_scan(connexion_mysql)
+        liste_dossiers = lister_tous_les_dossier(os.getenv("CHEMIN_RACINE"))
 
-    nouveaux_dossiers = []
-    dossiers_modifies = []
+        nouveaux_dossiers = []
+        dossiers_modifies = []
 
-    for dossier in liste_dossiers:
-        taille_dossier = calculer_taille_dossier(dossier)
-        taille_en_mo = round(
-            taille_dossier / (1024**2)
-        )  # Convertit en Mo (arrondi entier)
-        resultat = inserer_ou_mettre_a_jour_dossier(
-            connexion_mysql, dossier, taille_en_mo
-        )
+        for dossier in liste_dossiers:
+            taille_dossier = calculer_taille_dossier(dossier)
+            taille_en_mo = round(
+                taille_dossier / (1024**2)
+            )  # Convertit en Mo (arrondi entier)
+            resultat = inserer_ou_mettre_a_jour_dossier(
+                connexion_mysql, dossier, taille_en_mo
+            )
 
-        if resultat:
-            if resultat["type"] == "nouveau":
-                nouveaux_dossiers.append(resultat)
-            elif resultat["type"] == "modification":
-                dossiers_modifies.append(resultat)
+            if resultat:
+                if resultat["type"] == "nouveau":
+                    nouveaux_dossiers.append(resultat)
+                elif resultat["type"] == "modification":
+                    dossiers_modifies.append(resultat)
 
-    # Construction du message pour la notification Teams
-    message = f"Scan du {datetime.now().strftime('%d/%m/%Y à %H:%M')}\n"
+        # Construction du message pour la notification Teams
+        message = f"Scan du {datetime.now().strftime('%d/%m/%Y à %H:%M')}\n"
 
-    if len(nouveaux_dossiers) > 0:
-        message += "\nNouveaux dossiers:\n"
-        for dossier in nouveaux_dossiers:
-            message += f"- {dossier['chemin']} (+{dossier['taille']} Mo)\n"
+        if len(nouveaux_dossiers) > 0:
+            message += "\nNouveaux dossiers:\n"
+            for dossier in nouveaux_dossiers:
+                message += f"- {dossier['chemin']} (+{dossier['taille']} Mo)\n"
 
-    if len(dossiers_modifies) > 0:
-        message += "\nDossiers modifiés:\n"
-        for dossier in dossiers_modifies:
-            signe = "+" if dossier["difference"] > 0 else ""
-            message += f"- {dossier['chemin']} ({signe}{dossier['difference']} Mo)\n"
+        if len(dossiers_modifies) > 0:
+            message += "\nDossiers modifiés:\n"
+            for dossier in dossiers_modifies:
+                signe = "+" if dossier["difference"] > 0 else ""
+                message += (
+                    f"- {dossier['chemin']} ({signe}{dossier['difference']} Mo)\n"
+                )
 
-    message += "\n\nScan terminé avec succès"
+        message += "\n\nScan terminé avec succès"
 
-    if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0:
-        message += "\n\nAucun dossier modifié ou nouveau"
+        if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0:
+            message += "\n\nAucun dossier modifié ou nouveau"
 
-    terminer_scan(connexion_mysql, id_scan, "termine")
-    envoyer_notif_teams(message)
-    deconnecter_base_de_donnees(connexion_mysql)
+        terminer_scan(connexion_mysql, id_scan, "termine")
+        envoyer_notif_teams(message)
+
+    except Exception as e:
+        # En cas d'erreur, marquer le scan comme "erreur" et notifier
+        envoyer_notif_teams(f"Erreur critique durant le scan : {e}")
+        if connexion_mysql and id_scan:
+            terminer_scan(connexion_mysql, id_scan, "erreur")
+
+    finally:
+        # Toujours se déconnecter de la BDD, même en cas d'erreur
+        if connexion_mysql:
+            deconnecter_base_de_donnees(connexion_mysql)
 
 
 if __name__ == "__main__":
-    scanner()
+    # Planifie le scan quotidien à l'heure définie dans .env
+    heure_scan = os.getenv("HEURE_SCAN", "17:30")
+    schedule.every().day.at(heure_scan).do(scanner)
+
+    delai_verification = int(os.getenv("DELAI_VERIFICATION", 300))
+
+    # Boucle infinie pour que le programme continue de tourner
+    while True:
+        schedule.run_pending()
+        time.sleep(delai_verification)
