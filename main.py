@@ -248,7 +248,7 @@ def scanner() -> None:
                 dossiers_modifies.append(resultat)
 
     # Construction du message pour la notification Teams
-    message = f"Scan du {datetime.now().strftime('%d/%m/%Y à %H:%M')}:\n\n"
+    message = f"Scan du {datetime.now().strftime('%d/%m/%Y à %H:%M')}\n"
 
     if len(nouveaux_dossiers) > 0:
         message += "\nNouveaux dossiers:\n"
@@ -271,4 +271,5 @@ def scanner() -> None:
     deconnecter_base_de_donnees(connexion_mysql)
 
 
-scanner()
+if __name__ == "__main__":
+    scanner()
