@@ -178,6 +178,8 @@ Dossiers modifiés :
 - C:\Users\Documents (+150.30 Mo)
 - C:\Backup\Archives (-200.00 Mo)
 
+Variation totale : +200.75 Mo
+
 Scan terminé avec succès
 ```
 

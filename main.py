@@ -233,6 +233,7 @@ def scanner() -> None:
     """
     Scanne tous les dossiers à partir d'un chemin racine.
     """
+    print("Scan en cours...")
     connexion_mysql = None
     id_scan = None
     try:
@@ -242,12 +243,14 @@ def scanner() -> None:
 
         nouveaux_dossiers = []
         dossiers_modifies = []
+        taille_totale_scan = 0
 
         for dossier in liste_dossiers:
             taille_dossier = calculer_taille_dossier(dossier)
             taille_en_mo = round(
                 taille_dossier / (1024**2)
             )  # Convertit en Mo (arrondi entier)
+            taille_totale_scan += taille_en_mo
             resultat = inserer_ou_mettre_a_jour_dossier(
                 connexion_mysql, dossier, taille_en_mo
             )
@@ -257,6 +260,17 @@ def scanner() -> None:
                     nouveaux_dossiers.append(resultat)
                 elif resultat["type"] == "modification":
                     dossiers_modifies.append(resultat)
+
+        # Calcul de la variation totale d'espace
+        # Après le scan, taille_dernier_scan contient les anciennes valeurs
+        curseur = connexion_mysql.cursor()
+        curseur.execute(
+            "SELECT COALESCE(SUM(taille_dernier_scan), 0) FROM sudo_tailles"
+        )
+        somme_dernier_scan = curseur.fetchone()[0]
+        curseur.close()
+
+        variation_totale = taille_totale_scan - int(somme_dernier_scan)
 
         # Construction du message pour la notification Teams
         message = f"Scan du {datetime.now().strftime('%d/%m/%Y à %H:%M')}\n"
@@ -274,12 +288,17 @@ def scanner() -> None:
                     f"- {dossier['chemin']} ({signe}{dossier['difference']} Mo)\n"
                 )
 
+        # Variation totale
+        signe_total = "+" if variation_totale > 0 else ""
+        message += f"\nVariation totale : {signe_total}{variation_totale} Mo"
+
         message += "\n\nScan terminé avec succès"
 
         if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0:
             message += "\n\nAucun dossier modifié ou nouveau"
 
         terminer_scan(connexion_mysql, id_scan, "termine")
+        print(message)
         envoyer_notif_teams(message)
 
     except Exception as e:
