@@ -233,7 +233,6 @@ def scanner() -> None:
     """
     Scanne tous les dossiers à partir d'un chemin racine.
     """
-    print("Scan en cours...")
     connexion_mysql = None
     id_scan = None
     try:
@@ -298,7 +297,6 @@ def scanner() -> None:
             message += "\n\nAucun dossier modifié ou nouveau"
 
         terminer_scan(connexion_mysql, id_scan, "termine")
-        print(message)
         envoyer_notif_teams(message)
 
     except Exception as e:
