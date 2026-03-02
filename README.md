@@ -70,6 +70,47 @@ CREATE TABLE IF NOT EXISTS sudo_scans (
 ) ENGINE = InnoDB;
 ```
 
+### Mise en place
+
+1. **Installer MySQL** sur le serveur si ce n'est pas déjà fait :
+    - Télécharger MySQL Installer depuis [dev.mysql.com/downloads/installer/](https://dev.mysql.com/downloads/installer/)
+    - Installer **MySQL Server** et définir un mot de passe root lors de l'installation
+
+2. Ouvrir une **invite de commandes** (cmd) sur le serveur :
+
+```cmd
+mysql -u root -p
+```
+
+> 💡 Si `mysql` n'est pas reconnu, utilisez le chemin complet :
+> `"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -p`
+
+3. Copier-coller le **schéma SQL ci-dessus** dans le terminal MySQL
+
+4. Vérifier que les tables sont créées :
+
+```sql
+SHOW TABLES;
+```
+
+Résultat attendu :
+
+```
++------------------------------------+
+| Tables_in_superviseur_dossiers     |
++------------------------------------+
+| sudo_dossiers                      |
+| sudo_scans                         |
+| sudo_tailles                       |
++------------------------------------+
+```
+
+5. Quitter MySQL :
+
+```sql
+EXIT;
+```
+
 ## ⚙️ Configuration
 
 Créer un fichier `.env` à la racine du projet :
