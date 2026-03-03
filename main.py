@@ -327,15 +327,27 @@ if __name__ == "__main__":
     print("-" * 60)
 
     # Vérifie la connexion à la base de données au démarrage
+    statut_bdd = "OK"
     try:
         test_connexion = connecter_base_de_donnees()
         if test_connexion:
             print("✅ Connexion à la base de données : OK")
             deconnecter_base_de_donnees(test_connexion)
         else:
+            statut_bdd = "ÉCHEC"
             print("❌ Connexion à la base de données : ÉCHEC")
     except Exception as e:
-        print(f"❌ Connexion à la base de données : ÉCHEC ({e})")
+        statut_bdd = f"ÉCHEC ({e})"
+        print(f"❌ Connexion à la base de données : {statut_bdd}")
+
+    # Envoie une notification Teams pour confirmer le démarrage du script
+    message_demarrage = (
+        f"Superviseur de Dossiers - Démarré<br>"
+        f"Date : {datetime.now().strftime('%d/%m/%Y à %H:%M')}<br>"
+        f"Prochain scan prévu à : {heure_scan}<br>"
+        f"Base de données : {statut_bdd}"
+    )
+    envoyer_notif_teams(message_demarrage)
 
     print("-" * 60)
     print("ℹ️ NOTE : Si vous avez configuré la tâche planifiée Windows,")
