@@ -288,8 +288,9 @@ def scanner() -> None:
                 )
 
         # Variation totale
-        signe_total = "+" if variation_totale > 0 else ""
-        message += f"\nVariation totale : {signe_total}{variation_totale} Mo"
+        if variation_totale != 0:
+            signe_total = "+" if variation_totale > 0 else ""
+            message += f"\nVariation totale : {signe_total}{variation_totale} Mo"
 
         message += "\n\nScan terminé avec succès"
 
