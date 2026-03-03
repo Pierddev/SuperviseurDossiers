@@ -137,7 +137,7 @@ HEURE_SCAN="17:30"
 # seront inclus dans la notification Teams
 MODIFICATION_TAILLE_IMPORTANTE=100
 
-# Délai entre chaque vérification de l'heure (en secondes, ici 5 minutes)
+# Délai entre chaque vérification de l'heure (en secondes, par défaut 5 minutes)
 DELAI_VERIFICATION=300
 ```
 
