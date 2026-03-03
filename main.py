@@ -325,6 +325,19 @@ if __name__ == "__main__":
     print(f"📅 Prochain scan prévu à : {heure_scan}")
     print(f"⏱️ Vérification toutes les : {delai_verification} secondes")
     print("-" * 60)
+
+    # Vérifie la connexion à la base de données au démarrage
+    try:
+        test_connexion = connecter_base_de_donnees()
+        if test_connexion:
+            print("✅ Connexion à la base de données : OK")
+            deconnecter_base_de_donnees(test_connexion)
+        else:
+            print("❌ Connexion à la base de données : ÉCHEC")
+    except Exception as e:
+        print(f"❌ Connexion à la base de données : ÉCHEC ({e})")
+
+    print("-" * 60)
     print("ℹ️ NOTE : Si vous avez configuré la tâche planifiée Windows,")
     print("ce script démarrera automatiquement en arrière-plan")
     print("à chaque redémarrage du serveur (sans fenêtre visible).")
