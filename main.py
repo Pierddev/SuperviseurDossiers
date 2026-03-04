@@ -1,3 +1,4 @@
+import argparse
 import logging
 import os
 import sys
@@ -352,59 +353,76 @@ def scanner() -> None:
 
 
 if __name__ == "__main__":
-    # Planifie le scan quotidien à l'heure définie dans .env
-    heure_scan = os.getenv("HEURE_SCAN", "17:30")
-    schedule.every().day.at(heure_scan).do(scanner)
-
-    delai_verification = int(os.getenv("DELAI_VERIFICATION", 300))
-
-    print("=" * 60)
-    print("🚀 Superviseur de Dossiers - Démarré")
-    print("=" * 60)
-    print(f"📅 Prochain scan prévu à : {heure_scan}")
-    print(f"⏱️ Vérification toutes les : {delai_verification} secondes")
-
-    # Affiche les chemins exclus
-    chemins_exclus = [
-        c.strip() for c in os.getenv("CHEMINS_EXCLUS", "").split(",") if c.strip()
-    ]
-    if chemins_exclus:
-        print(f"🚫 Chemins exclus : {', '.join(chemins_exclus)}")
-    else:
-        print("🚫 Aucun chemin exclu")
-    print("-" * 60)
-
-    # Vérifie la connexion à la base de données au démarrage
-    statut_bdd = "OK"
-    try:
-        test_connexion = connecter_base_de_donnees()
-        if test_connexion:
-            print("✅ Connexion à la base de données : OK")
-            deconnecter_base_de_donnees(test_connexion)
-        else:
-            statut_bdd = "ÉCHEC"
-            print("❌ Connexion à la base de données : ÉCHEC")
-    except Exception as e:
-        statut_bdd = f"ÉCHEC ({e})"
-        print(f"❌ Connexion à la base de données : {statut_bdd}")
-
-    # Envoie une notification Teams pour confirmer le démarrage du script
-    message_demarrage = (
-        f"Superviseur de Dossiers - Démarré<br>"
-        f"Date : {datetime.now().strftime('%d/%m/%Y à %H:%M')}<br>"
-        f"Prochain scan prévu à : {heure_scan}<br>"
-        f"Base de données : {statut_bdd}"
+    # Parse les arguments en ligne de commande
+    parser = argparse.ArgumentParser(description="Superviseur de Dossiers")
+    parser.add_argument(
+        "--scan-now",
+        action="store_true",
+        help="Lance un scan immédiatement et quitte",
     )
-    envoyer_notif_teams(message_demarrage)
+    args = parser.parse_args()
 
-    print("-" * 60)
-    print("ℹ️ NOTE : Si vous avez configuré la tâche planifiée Windows,")
-    print("ce script démarrera automatiquement en arrière-plan")
-    print("à chaque redémarrage du serveur (sans fenêtre visible).")
-    print("=" * 60)
-    print("Le programme est en cours d'execution... Ne fermez pas cette fenetre")
+    if args.scan_now:
+        # Mode scan immédiat
+        print("=" * 60)
+        print("🔍 Superviseur de Dossiers - Scan manuel")
+        print("=" * 60)
+        scanner()
+        print("✅ Scan terminé.")
+    else:
+        # Mode planifié (comportement par défaut)
+        heure_scan = os.getenv("HEURE_SCAN", "17:30")
+        schedule.every().day.at(heure_scan).do(scanner)
 
-    # Boucle infinie pour que le programme continue de tourner
-    while True:
-        schedule.run_pending()
-        time.sleep(delai_verification)
+        delai_verification = int(os.getenv("DELAI_VERIFICATION", 300))
+
+        print("=" * 60)
+        print("🚀 Superviseur de Dossiers - Démarré")
+        print("=" * 60)
+        print(f"📅 Prochain scan prévu à : {heure_scan}")
+        print(f"⏱️ Vérification toutes les : {delai_verification} secondes")
+
+        # Affiche les chemins exclus
+        chemins_exclus = [
+            c.strip() for c in os.getenv("CHEMINS_EXCLUS", "").split(",") if c.strip()
+        ]
+        if chemins_exclus:
+            print(f"🚫 Chemins exclus : {', '.join(chemins_exclus)}")
+        else:
+            print("🚫 Aucun chemin exclu")
+        print("-" * 60)
+
+        # Vérifie la connexion à la base de données au démarrage
+        statut_bdd = "OK"
+        try:
+            test_connexion = connecter_base_de_donnees()
+            if test_connexion:
+                print("✅ Connexion à la base de données : OK")
+                deconnecter_base_de_donnees(test_connexion)
+            else:
+                statut_bdd = "ÉCHEC"
+                print("❌ Connexion à la base de données : ÉCHEC")
+        except Exception as e:
+            statut_bdd = f"ÉCHEC ({e})"
+            print(f"❌ Connexion à la base de données : {statut_bdd}")
+
+        # Envoie une notification Teams pour confirmer le démarrage du script
+        message_demarrage = (
+            f"Superviseur de Dossiers - Démarré<br>"
+            f"Date : {datetime.now().strftime('%d/%m/%Y à %H:%M')}<br>"
+            f"Prochain scan prévu à : {heure_scan}<br>"
+            f"Base de données : {statut_bdd}"
+        )
+        envoyer_notif_teams(message_demarrage)
+
+        print("-" * 60)
+        print("ℹ️ NOTE : Si vous avez configuré la tâche planifiée Windows,")
+        print("ce script démarrera automatiquement en arrière-plan")
+        print("à chaque redémarrage du serveur (sans fenêtre visible).")
+        print("=" * 60)
+        print("Le programme est en cours d'execution... Ne fermez pas cette fenetre")
+
+        # Boucle infinie pour que le programme continue de tourner
+        while True:
+            schedule.run_pending()
+            time.sleep(delai_verification)
