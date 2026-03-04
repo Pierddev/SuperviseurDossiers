@@ -231,34 +231,41 @@ def inserer_ou_mettre_a_jour_dossier(
 
 def scanner() -> None:
     """
-    Scanne tous les dossiers à partir d'un chemin racine.
+    Scanne tous les dossiers à partir des chemins racines définis dans .env.
     """
     connexion_mysql = None
     id_scan = None
     try:
         connexion_mysql = connecter_base_de_donnees()
         id_scan = creer_scan(connexion_mysql)
-        liste_dossiers = lister_tous_les_dossier(os.getenv("CHEMIN_RACINE"))
+
+        # Parse les chemins racines séparés par des virgules
+        chemins_racines = os.getenv("CHEMINS_RACINES", "").split(",")
 
         nouveaux_dossiers = []
         dossiers_modifies = []
         taille_totale_scan = 0
 
-        for dossier in liste_dossiers:
-            taille_dossier = calculer_taille_dossier(dossier)
-            taille_en_mo = round(
-                taille_dossier / (1024**2)
-            )  # Convertit en Mo (arrondi entier)
-            taille_totale_scan += taille_en_mo
-            resultat = inserer_ou_mettre_a_jour_dossier(
-                connexion_mysql, dossier, taille_en_mo
-            )
+        for chemin_racine in chemins_racines:
+            chemin_racine = chemin_racine.strip()
+            if not chemin_racine:
+                continue
+            liste_dossiers = lister_tous_les_dossier(chemin_racine)
+            for dossier in liste_dossiers:
+                taille_dossier = calculer_taille_dossier(dossier)
+                taille_en_mo = round(
+                    taille_dossier / (1024**2)
+                )  # Convertit en Mo (arrondi entier)
+                taille_totale_scan += taille_en_mo
+                resultat = inserer_ou_mettre_a_jour_dossier(
+                    connexion_mysql, dossier, taille_en_mo
+                )
 
-            if resultat:
-                if resultat["type"] == "nouveau":
-                    nouveaux_dossiers.append(resultat)
-                elif resultat["type"] == "modification":
-                    dossiers_modifies.append(resultat)
+                if resultat:
+                    if resultat["type"] == "nouveau":
+                        nouveaux_dossiers.append(resultat)
+                    elif resultat["type"] == "modification":
+                        dossiers_modifies.append(resultat)
 
         # Calcul de la variation totale d'espace
         # Après le scan, taille_dernier_scan contient les anciennes valeurs
