@@ -5,3 +5,4 @@ __pycache__/main.cpython-314.pyc
 /dist
 SuperviseurDossiers.spec
 exe_generator.bat
+/tests/__pycache__

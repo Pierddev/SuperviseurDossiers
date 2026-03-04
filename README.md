@@ -130,6 +130,10 @@ TEAMS_WEBHOOK_URL="https://votre-webhook-teams.com/..."
 # Supporte les chemins locaux et réseau (UNC)
 CHEMINS_RACINES=C:\,D:\Data,\\ServeurNAS\Partage
 
+# Chemins à exclure du scan (séparés par des virgules)
+# Les sous-dossiers des chemins exclus ne seront pas scannés
+CHEMINS_EXCLUS=C:\Windows,C:\Program Files,C:\Program Files (x86)
+
 # Heure du scan quotidien (format HH:MM)
 HEURE_SCAN="17:30"
 

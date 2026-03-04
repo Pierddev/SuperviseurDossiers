@@ -88,12 +88,39 @@ def calculer_taille_dossier(chemin_dossier: str) -> int:
     return taille_totale
 
 
-def lister_tous_les_dossier(chemin_racine: str) -> list[str]:
+def est_chemin_exclu(chemin: str, chemins_exclus: list[str]) -> bool:
+    """
+    Vérifie si un chemin doit être exclu du scan.
+    Retourne True si le chemin commence par l'un des chemins exclus.
+    La comparaison est insensible à la casse (Windows).
+    """
+    chemin_normalise = os.path.normcase(os.path.normpath(chemin))
+    for chemin_exclu in chemins_exclus:
+        exclu_normalise = os.path.normcase(os.path.normpath(chemin_exclu))
+        if chemin_normalise == exclu_normalise or chemin_normalise.startswith(
+            exclu_normalise + os.sep
+        ):
+            return True
+    return False
+
+
+def lister_tous_les_dossier(
+    chemin_racine: str, chemins_exclus: list[str] = None
+) -> list[str]:
     """
     Liste tous les dossiers à partir d'un chemin racine.
+    Si chemins_exclus est fourni, les dossiers correspondants et leurs
+    sous-dossiers sont ignorés.
     """
     liste_des_dossiers = [chemin_racine]
     for dossier, sous_dossiers, fichiers in os.walk(chemin_racine, followlinks=False):
+        if chemins_exclus:
+            # Filtre en place pour empêcher os.walk de descendre dans les dossiers exclus
+            sous_dossiers[:] = [
+                sd
+                for sd in sous_dossiers
+                if not est_chemin_exclu(os.path.join(dossier, sd), chemins_exclus)
+            ]
         for sous_dossier in sous_dossiers:
             # Ajoute le chemin complet du sous-dossier à la liste
             liste_des_dossiers.append(os.path.join(dossier, sous_dossier))
@@ -242,6 +269,11 @@ def scanner() -> None:
         # Parse les chemins racines séparés par des virgules
         chemins_racines = os.getenv("CHEMINS_RACINES", "").split(",")
 
+        # Parse les chemins exclus séparés par des virgules
+        chemins_exclus = [
+            c.strip() for c in os.getenv("CHEMINS_EXCLUS", "").split(",") if c.strip()
+        ]
+
         nouveaux_dossiers = []
         dossiers_modifies = []
         taille_totale_scan = 0
@@ -250,7 +282,7 @@ def scanner() -> None:
             chemin_racine = chemin_racine.strip()
             if not chemin_racine:
                 continue
-            liste_dossiers = lister_tous_les_dossier(chemin_racine)
+            liste_dossiers = lister_tous_les_dossier(chemin_racine, chemins_exclus)
             for dossier in liste_dossiers:
                 taille_dossier = calculer_taille_dossier(dossier)
                 taille_en_mo = round(
@@ -331,6 +363,15 @@ if __name__ == "__main__":
     print("=" * 60)
     print(f"📅 Prochain scan prévu à : {heure_scan}")
     print(f"⏱️ Vérification toutes les : {delai_verification} secondes")
+
+    # Affiche les chemins exclus
+    chemins_exclus = [
+        c.strip() for c in os.getenv("CHEMINS_EXCLUS", "").split(",") if c.strip()
+    ]
+    if chemins_exclus:
+        print(f"🚫 Chemins exclus : {', '.join(chemins_exclus)}")
+    else:
+        print("🚫 Aucun chemin exclu")
     print("-" * 60)
 
     # Vérifie la connexion à la base de données au démarrage

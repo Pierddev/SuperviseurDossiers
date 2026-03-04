@@ -11,7 +11,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from main import calculer_taille_dossier, lister_tous_les_dossier
+from main import calculer_taille_dossier, lister_tous_les_dossier, est_chemin_exclu
 
 
 class TestCalculerTailleDossier(unittest.TestCase):
@@ -81,6 +81,43 @@ class TestCalculerTailleDossier(unittest.TestCase):
         self.assertIsInstance(taille, int)
 
 
+class TestEstCheminExclu(unittest.TestCase):
+    """Tests pour la fonction est_chemin_exclu."""
+
+    def test_chemin_exactement_exclu(self):
+        """Un chemin identique à un chemin exclu doit retourner True."""
+        self.assertTrue(est_chemin_exclu("C:\\Windows", ["C:\\Windows"]))
+
+    def test_sous_chemin_exclu(self):
+        """Un sous-chemin d'un chemin exclu doit retourner True."""
+        self.assertTrue(est_chemin_exclu("C:\\Windows\\System32", ["C:\\Windows"]))
+
+    def test_chemin_non_exclu(self):
+        """Un chemin qui ne correspond à aucune exclusion doit retourner False."""
+        self.assertFalse(est_chemin_exclu("C:\\Users", ["C:\\Windows"]))
+
+    def test_liste_exclusions_vide(self):
+        """Avec une liste vide, aucun chemin ne doit être exclu."""
+        self.assertFalse(est_chemin_exclu("C:\\Windows", []))
+
+    def test_comparaison_insensible_casse(self):
+        """La comparaison doit être insensible à la casse (Windows)."""
+        self.assertTrue(est_chemin_exclu("C:\\WINDOWS", ["C:\\windows"]))
+        self.assertTrue(est_chemin_exclu("c:\\windows", ["C:\\Windows"]))
+
+    def test_chemin_similaire_non_exclu(self):
+        """Un chemin qui commence par le même préfixe mais n'est pas un sous-dossier ne doit pas être exclu."""
+        # C:\WindowsApps ne doit PAS être exclu si on exclut C:\Windows
+        self.assertFalse(est_chemin_exclu("C:\\WindowsApps", ["C:\\Windows"]))
+
+    def test_plusieurs_exclusions(self):
+        """Doit fonctionner avec plusieurs chemins exclus."""
+        exclusions = ["C:\\Windows", "C:\\Program Files"]
+        self.assertTrue(est_chemin_exclu("C:\\Windows\\System32", exclusions))
+        self.assertTrue(est_chemin_exclu("C:\\Program Files\\App", exclusions))
+        self.assertFalse(est_chemin_exclu("C:\\Users", exclusions))
+
+
 class TestListerTousLesDossier(unittest.TestCase):
     """Tests pour la fonction lister_tous_les_dossier."""
 
@@ -137,6 +174,37 @@ class TestListerTousLesDossier(unittest.TestCase):
         resultat = lister_tous_les_dossier(self.dossier_temp)
         for chemin in resultat:
             self.assertTrue(os.path.isabs(chemin))
+
+    def test_exclusion_dossier(self):
+        """Un dossier exclu ne doit pas apparaître dans la liste."""
+        os.makedirs(os.path.join(self.dossier_temp, "inclus"))
+        chemin_exclu = os.path.join(self.dossier_temp, "exclu")
+        os.makedirs(chemin_exclu)
+        resultat = lister_tous_les_dossier(self.dossier_temp, [chemin_exclu])
+        self.assertNotIn(chemin_exclu, resultat)
+        self.assertIn(os.path.join(self.dossier_temp, "inclus"), resultat)
+
+    def test_exclusion_sous_dossiers(self):
+        """Les sous-dossiers d'un dossier exclu ne doivent pas apparaître."""
+        chemin_exclu = os.path.join(self.dossier_temp, "exclu")
+        os.makedirs(os.path.join(chemin_exclu, "profond", "tres_profond"))
+        resultat = lister_tous_les_dossier(self.dossier_temp, [chemin_exclu])
+        # Seul le dossier racine doit être dans la liste
+        self.assertEqual(len(resultat), 1)
+        self.assertEqual(resultat[0], self.dossier_temp)
+
+    def test_exclusion_vide(self):
+        """Avec une liste d'exclusion vide, tous les dossiers doivent être listés."""
+        os.makedirs(os.path.join(self.dossier_temp, "dossier_a"))
+        os.makedirs(os.path.join(self.dossier_temp, "dossier_b"))
+        resultat = lister_tous_les_dossier(self.dossier_temp, [])
+        self.assertEqual(len(resultat), 3)  # racine + 2 sous-dossiers
+
+    def test_sans_exclusion_retrocompatible(self):
+        """Sans paramètre d'exclusion, le comportement doit être identique."""
+        os.makedirs(os.path.join(self.dossier_temp, "dossier_a"))
+        resultat = lister_tous_les_dossier(self.dossier_temp)
+        self.assertEqual(len(resultat), 2)  # racine + 1 sous-dossier
 
 
 if __name__ == "__main__":
