@@ -17,11 +17,13 @@ Script Python déployé sur **Windows Server** qui analyse automatiquement la ta
 ## 🎯 Fonctionnalités
 
 - **Scan récursif** — Parcourt tous les dossiers et sous-dossiers à partir d'un chemin racine configurable
+- **Exclusion de chemins** — Permet d'exclure des dossiers du scan (ex: `C:\Windows`)
 - **Stockage en BDD** — Enregistre la taille de chaque dossier en Mo avec historique léger (taille actuelle + taille du dernier scan)
 - **Détection des changements** — Identifie les nouveaux dossiers et les variations de taille significatives (seuil configurable)
 - **Notifications Teams** — Envoie un résumé après chaque scan via webhook Microsoft Teams
 - **Logging** — Enregistre les erreurs dans un fichier `superviseur.log`
 - **Planification** — Scan quotidien automatique à une heure configurable
+- **Scan manuel** — Possibilité de lancer un scan immédiat via `.\SuperviseurDossiers.exe --scan-now`
 
 ## 📋 Prérequis
 
