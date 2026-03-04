@@ -4,3 +4,4 @@ __pycache__/main.cpython-314.pyc
 /build
 /dist
 SuperviseurDossiers.spec
+exe_generator.bat
