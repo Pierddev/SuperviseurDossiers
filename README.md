@@ -70,6 +70,9 @@ CREATE TABLE IF NOT EXISTS sudo_scans (
   scan_statut ENUM('en_cours', 'termine', 'erreur') NULL,
   PRIMARY KEY (id_scan)
 ) ENGINE = InnoDB;
+
+-- Index pour optimiser les recherches par chemin de dossier
+CREATE INDEX idx_dossier_chemin ON sudo_dossiers(dossier_chemin);
 ```
 
 ### Mise en place
@@ -171,8 +174,11 @@ cp .env.example .env
 # Créer les tables dans MySQL
 # Exécuter le schéma SQL ci-dessus dans votre base de données
 
-# Lancer le script
+# Lancer le script (mode planifié)
 python main.py
+
+# Lancer un scan immédiat (puis quitte)
+python main.py --scan-now
 ```
 
 ## 📦 Déploiement sur Windows Server
@@ -229,6 +235,7 @@ Dossiers modifiés :
 Variation totale : +200.75 Mo
 
 Scan terminé avec succès
+⏱️ Durée du scan : 10s
 ```
 
 ## 📂 Structure du projet

@@ -20,34 +20,32 @@ class TestScanner(unittest.TestCase):
     @patch("main.deconnecter_base_de_donnees")
     @patch("main.envoyer_notif_teams")
     @patch("main.terminer_scan")
-    @patch("main.inserer_ou_mettre_a_jour_dossier")
-    @patch("main.calculer_taille_dossier")
-    @patch("main.lister_tous_les_dossier")
+    @patch("main.traiter_dossiers_en_lot")
+    @patch("main.scanner_arborescence")
     @patch("main.creer_scan")
     @patch("main.connecter_base_de_donnees")
     def test_sequence_complete(
         self,
         mock_connect,
         mock_creer,
-        mock_lister,
-        mock_taille,
-        mock_inserer,
+        mock_scanner_arbo,
+        mock_traiter,
         mock_terminer,
         mock_notif,
         mock_deconnect,
     ):
-        """Le scanner doit suivre la séquence : connecter → créer scan → lister → traiter → terminer → notifier → déconnecter."""
+        """Le scanner doit suivre la séquence : connecter → créer scan → scanner_arborescence → traiter_en_lot → terminer → notifier → déconnecter."""
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
-        mock_lister.return_value = ["C:\\test"]
-        mock_taille.return_value = 0
-        mock_inserer.return_value = None
+        mock_scanner_arbo.return_value = {"C:\\test": 0}
+        mock_traiter.return_value = ([], [], 0)
 
         scanner()
 
         mock_connect.assert_called_once()
         mock_creer.assert_called_once()
-        mock_lister.assert_called_once()
+        mock_scanner_arbo.assert_called_once()
+        mock_traiter.assert_called_once()
         mock_terminer.assert_called_once()
         mock_notif.assert_called_once()
         mock_deconnect.assert_called_once()
@@ -55,18 +53,16 @@ class TestScanner(unittest.TestCase):
     @patch("main.deconnecter_base_de_donnees")
     @patch("main.envoyer_notif_teams")
     @patch("main.terminer_scan")
-    @patch("main.inserer_ou_mettre_a_jour_dossier")
-    @patch("main.calculer_taille_dossier")
-    @patch("main.lister_tous_les_dossier")
+    @patch("main.traiter_dossiers_en_lot")
+    @patch("main.scanner_arborescence")
     @patch("main.creer_scan")
     @patch("main.connecter_base_de_donnees")
     def test_scan_termine_avec_statut_termine(
         self,
         mock_connect,
         mock_creer,
-        mock_lister,
-        mock_taille,
-        mock_inserer,
+        mock_scanner_arbo,
+        mock_traiter,
         mock_terminer,
         mock_notif,
         mock_deconnect,
@@ -74,8 +70,8 @@ class TestScanner(unittest.TestCase):
         """Le scan doit être terminé avec le statut 'termine'."""
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
-        mock_lister.return_value = []
-        mock_inserer.return_value = None
+        mock_scanner_arbo.return_value = {}
+        mock_traiter.return_value = ([], [], 0)
 
         scanner()
 
@@ -86,18 +82,16 @@ class TestScanner(unittest.TestCase):
     @patch("main.deconnecter_base_de_donnees")
     @patch("main.envoyer_notif_teams")
     @patch("main.terminer_scan")
-    @patch("main.inserer_ou_mettre_a_jour_dossier")
-    @patch("main.calculer_taille_dossier")
-    @patch("main.lister_tous_les_dossier")
+    @patch("main.traiter_dossiers_en_lot")
+    @patch("main.scanner_arborescence")
     @patch("main.creer_scan")
     @patch("main.connecter_base_de_donnees")
     def test_message_contient_nouveaux_dossiers(
         self,
         mock_connect,
         mock_creer,
-        mock_lister,
-        mock_taille,
-        mock_inserer,
+        mock_scanner_arbo,
+        mock_traiter,
         mock_terminer,
         mock_notif,
         mock_deconnect,
@@ -105,13 +99,12 @@ class TestScanner(unittest.TestCase):
         """Le message Teams doit mentionner les nouveaux dossiers."""
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
-        mock_lister.return_value = ["C:\\nouveau"]
-        mock_taille.return_value = 200 * 1024 * 1024  # 200 Mo en octets
-        mock_inserer.return_value = {
-            "type": "nouveau",
-            "chemin": "C:\\nouveau",
-            "taille": 200,
-        }
+        mock_scanner_arbo.return_value = {"C:\\nouveau": 200 * 1024 * 1024}
+        mock_traiter.return_value = (
+            [{"type": "nouveau", "chemin": "C:\\nouveau", "taille": 200}],
+            [],
+            200,
+        )
 
         scanner()
 
@@ -122,18 +115,16 @@ class TestScanner(unittest.TestCase):
     @patch("main.deconnecter_base_de_donnees")
     @patch("main.envoyer_notif_teams")
     @patch("main.terminer_scan")
-    @patch("main.inserer_ou_mettre_a_jour_dossier")
-    @patch("main.calculer_taille_dossier")
-    @patch("main.lister_tous_les_dossier")
+    @patch("main.traiter_dossiers_en_lot")
+    @patch("main.scanner_arborescence")
     @patch("main.creer_scan")
     @patch("main.connecter_base_de_donnees")
     def test_message_contient_dossiers_modifies(
         self,
         mock_connect,
         mock_creer,
-        mock_lister,
-        mock_taille,
-        mock_inserer,
+        mock_scanner_arbo,
+        mock_traiter,
         mock_terminer,
         mock_notif,
         mock_deconnect,
@@ -141,13 +132,12 @@ class TestScanner(unittest.TestCase):
         """Le message Teams doit mentionner les dossiers modifiés."""
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
-        mock_lister.return_value = ["C:\\modifie"]
-        mock_taille.return_value = 0
-        mock_inserer.return_value = {
-            "type": "modification",
-            "chemin": "C:\\modifie",
-            "difference": 150,
-        }
+        mock_scanner_arbo.return_value = {"C:\\modifie": 0}
+        mock_traiter.return_value = (
+            [],
+            [{"type": "modification", "chemin": "C:\\modifie", "difference": 150}],
+            0,
+        )
 
         scanner()
 
@@ -159,18 +149,16 @@ class TestScanner(unittest.TestCase):
     @patch("main.deconnecter_base_de_donnees")
     @patch("main.envoyer_notif_teams")
     @patch("main.terminer_scan")
-    @patch("main.inserer_ou_mettre_a_jour_dossier")
-    @patch("main.calculer_taille_dossier")
-    @patch("main.lister_tous_les_dossier")
+    @patch("main.traiter_dossiers_en_lot")
+    @patch("main.scanner_arborescence")
     @patch("main.creer_scan")
     @patch("main.connecter_base_de_donnees")
     def test_message_sans_modification(
         self,
         mock_connect,
         mock_creer,
-        mock_lister,
-        mock_taille,
-        mock_inserer,
+        mock_scanner_arbo,
+        mock_traiter,
         mock_terminer,
         mock_notif,
         mock_deconnect,
@@ -178,9 +166,8 @@ class TestScanner(unittest.TestCase):
         """Le message doit indiquer qu'aucun dossier n'a été modifié."""
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
-        mock_lister.return_value = ["C:\\stable"]
-        mock_taille.return_value = 0
-        mock_inserer.return_value = None
+        mock_scanner_arbo.return_value = {"C:\\stable": 0}
+        mock_traiter.return_value = ([], [], 0)
 
         scanner()
 
@@ -190,18 +177,16 @@ class TestScanner(unittest.TestCase):
     @patch("main.deconnecter_base_de_donnees")
     @patch("main.envoyer_notif_teams")
     @patch("main.terminer_scan")
-    @patch("main.inserer_ou_mettre_a_jour_dossier")
-    @patch("main.calculer_taille_dossier")
-    @patch("main.lister_tous_les_dossier")
+    @patch("main.traiter_dossiers_en_lot")
+    @patch("main.scanner_arborescence")
     @patch("main.creer_scan")
     @patch("main.connecter_base_de_donnees")
     def test_message_contient_la_date(
         self,
         mock_connect,
         mock_creer,
-        mock_lister,
-        mock_taille,
-        mock_inserer,
+        mock_scanner_arbo,
+        mock_traiter,
         mock_terminer,
         mock_notif,
         mock_deconnect,
@@ -209,8 +194,8 @@ class TestScanner(unittest.TestCase):
         """Le message doit contenir la date et l'heure du scan."""
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
-        mock_lister.return_value = []
-        mock_inserer.return_value = None
+        mock_scanner_arbo.return_value = {}
+        mock_traiter.return_value = ([], [], 0)
 
         scanner()
 
@@ -220,18 +205,16 @@ class TestScanner(unittest.TestCase):
     @patch("main.deconnecter_base_de_donnees")
     @patch("main.envoyer_notif_teams")
     @patch("main.terminer_scan")
-    @patch("main.inserer_ou_mettre_a_jour_dossier")
-    @patch("main.calculer_taille_dossier")
-    @patch("main.lister_tous_les_dossier")
+    @patch("main.traiter_dossiers_en_lot")
+    @patch("main.scanner_arborescence")
     @patch("main.creer_scan")
     @patch("main.connecter_base_de_donnees")
     def test_signe_negatif_pour_reduction(
         self,
         mock_connect,
         mock_creer,
-        mock_lister,
-        mock_taille,
-        mock_inserer,
+        mock_scanner_arbo,
+        mock_traiter,
         mock_terminer,
         mock_notif,
         mock_deconnect,
@@ -239,13 +222,12 @@ class TestScanner(unittest.TestCase):
         """Une réduction de taille doit afficher un signe négatif."""
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
-        mock_lister.return_value = ["C:\\reduit"]
-        mock_taille.return_value = 0
-        mock_inserer.return_value = {
-            "type": "modification",
-            "chemin": "C:\\reduit",
-            "difference": -200,
-        }
+        mock_scanner_arbo.return_value = {"C:\\reduit": 0}
+        mock_traiter.return_value = (
+            [],
+            [{"type": "modification", "chemin": "C:\\reduit", "difference": -200}],
+            0,
+        )
 
         scanner()
 
