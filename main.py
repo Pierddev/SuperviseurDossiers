@@ -442,25 +442,7 @@ def scanner() -> None:
         dossiers_modifies = filtrer_dossiers_redondants(dossiers_modifies)
 
         # Construction du message pour la notification Teams
-        message = f"Scan du {datetime.now().strftime('%d/%m/%Y à %H:%M')}\n"
-
-        if len(nouveaux_dossiers) > 0:
-            message += "\nNouveaux dossiers:\n"
-            for dossier in nouveaux_dossiers:
-                message += f"- {dossier['chemin']} (+{dossier['taille']} Mo)\n"
-
-        if len(dossiers_modifies) > 0:
-            message += "\nDossiers modifiés:\n"
-            for dossier in dossiers_modifies:
-                signe = "+" if dossier["difference"] > 0 else ""
-                message += (
-                    f"- {dossier['chemin']} ({signe}{dossier['difference']} Mo)\n"
-                )
-
-        message += "\n<br><br>Scan terminé avec succès"
-
-        if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0:
-            message += "\n\nAucun dossier modifié ou nouveau"
+        message = "✅ Scan terminé avec succès"
 
         # Calcul de la durée du scan
         duree_scan = time.time() - debut_scan
@@ -473,14 +455,31 @@ def scanner() -> None:
             duree_formatee = f"{minutes}min {secondes}s"
         else:
             duree_formatee = f"{secondes}s"
-        message += f"<br>⏱️ Durée du scan : {duree_formatee}"
+
+        message += f"\n📅 {datetime.now().strftime('%d/%m/%Y à %H:%M')} | <br>⏱️ Durée du scan : {duree_formatee}\n"
+
+        if len(nouveaux_dossiers) > 0:
+            message += "\n<br>Nouveaux dossiers:\n"
+            for dossier in nouveaux_dossiers:
+                message += f"- {dossier['chemin']} (+{dossier['taille']} Mo)\n"
+
+        if len(dossiers_modifies) > 0:
+            message += "\n<br>Dossiers modifiés:\n"
+            for dossier in dossiers_modifies:
+                signe = "+" if dossier["difference"] > 0 else ""
+                message += (
+                    f"- {dossier['chemin']} ({signe}{dossier['difference']} Mo)\n"
+                )
+
+        if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0:
+            message += "\n\nAucun dossier modifié ou nouveau"
 
         terminer_scan(connexion_mysql, id_scan, "termine")
         envoyer_notif_teams(message)
 
     except Exception as e:
         # En cas d'erreur, marquer le scan comme "erreur" et notifier
-        envoyer_notif_teams(f"Erreur critique durant le scan : {e}")
+        envoyer_notif_teams(f"❌ Erreur critique durant le scan : {e}")
         if connexion_mysql and id_scan:
             terminer_scan(connexion_mysql, id_scan, "erreur")
 
