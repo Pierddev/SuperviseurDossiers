@@ -88,7 +88,10 @@ mysql -u root -p
 ```
 
 > 💡 Si `mysql` n'est pas reconnu, utilisez le chemin complet :
-> `"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -p`
+
+```cmd
+"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -p
+```
 
 3. Copier-coller le **schéma SQL ci-dessus** dans le terminal MySQL
 
