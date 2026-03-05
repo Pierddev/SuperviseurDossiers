@@ -381,6 +381,27 @@ def traiter_dossiers_en_lot(
     return nouveaux_dossiers, dossiers_modifies, taille_totale_scan
 
 
+def filtrer_dossiers_redondants(dossiers: list[dict]) -> list[dict]:
+    """
+    Filtre les dossiers parents redondants dans la liste de notification.
+    Un dossier est redondant s'il est un parent d'un autre dossier dans la liste.
+    Seuls les dossiers les plus profonds (feuilles) sont conservés.
+    """
+    chemins = [os.path.normcase(os.path.normpath(d["chemin"])) for d in dossiers]
+    resultat = []
+    for i, dossier in enumerate(dossiers):
+        chemin = chemins[i]
+        # Vérifie si un autre dossier de la liste est un enfant de celui-ci
+        est_parent = any(
+            autre.startswith(chemin + os.sep)
+            for j, autre in enumerate(chemins)
+            if j != i
+        )
+        if not est_parent:
+            resultat.append(dossier)
+    return resultat
+
+
 def scanner() -> None:
     """
     Scanne tous les dossiers à partir des chemins racines définis dans .env.
@@ -416,6 +437,10 @@ def scanner() -> None:
             dossiers_modifies.extend(modifies)
             taille_totale_scan += taille_scan
 
+        # Filtre les dossiers parents redondants pour la notification
+        nouveaux_dossiers = filtrer_dossiers_redondants(nouveaux_dossiers)
+        dossiers_modifies = filtrer_dossiers_redondants(dossiers_modifies)
+
         # Construction du message pour la notification Teams
         message = f"Scan du {datetime.now().strftime('%d/%m/%Y à %H:%M')}\n"
 
@@ -432,7 +457,7 @@ def scanner() -> None:
                     f"- {dossier['chemin']} ({signe}{dossier['difference']} Mo)\n"
                 )
 
-        message += "<br><br>Scan terminé avec succès"
+        message += "\n<br><br>Scan terminé avec succès"
 
         if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0:
             message += "\n\nAucun dossier modifié ou nouveau"

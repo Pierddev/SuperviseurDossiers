@@ -16,6 +16,7 @@ from main import (
     lister_tous_les_dossier,
     est_chemin_exclu,
     scanner_arborescence,
+    filtrer_dossiers_redondants,
 )
 
 
@@ -282,6 +283,57 @@ class TestScannerArborescence(unittest.TestCase):
         """La fonction doit retourner un dictionnaire."""
         resultat = scanner_arborescence(self.dossier_temp)
         self.assertIsInstance(resultat, dict)
+
+
+class TestFiltrerDossiersRedondants(unittest.TestCase):
+    """Tests pour la fonction filtrer_dossiers_redondants."""
+
+    def test_filtre_parents_cascade(self):
+        """Les parents dont un enfant est dans la liste doivent être filtrés."""
+        dossiers = [
+            {"type": "modification", "chemin": "C:\\Users", "difference": 500},
+            {"type": "modification", "chemin": "C:\\Users\\Pierre", "difference": 500},
+            {
+                "type": "modification",
+                "chemin": "C:\\Users\\Pierre\\Desktop",
+                "difference": 500,
+            },
+        ]
+        resultat = filtrer_dossiers_redondants(dossiers)
+        self.assertEqual(len(resultat), 1)
+        self.assertEqual(resultat[0]["chemin"], "C:\\Users\\Pierre\\Desktop")
+
+    def test_garde_dossiers_independants(self):
+        """Des dossiers sans lien parent-enfant doivent tous être conservés."""
+        dossiers = [
+            {"type": "modification", "chemin": "C:\\Data", "difference": 100},
+            {"type": "modification", "chemin": "D:\\Backup", "difference": 200},
+        ]
+        resultat = filtrer_dossiers_redondants(dossiers)
+        self.assertEqual(len(resultat), 2)
+
+    def test_liste_vide(self):
+        """Une liste vide doit retourner une liste vide."""
+        self.assertEqual(filtrer_dossiers_redondants([]), [])
+
+    def test_un_seul_dossier(self):
+        """Un seul dossier doit être conservé."""
+        dossiers = [{"type": "nouveau", "chemin": "C:\\Data", "taille": 100}]
+        resultat = filtrer_dossiers_redondants(dossiers)
+        self.assertEqual(len(resultat), 1)
+
+    def test_branches_multiples(self):
+        """Quand un parent a plusieurs enfants dans la liste, le parent est filtré mais les enfants sont gardés."""
+        dossiers = [
+            {"type": "modification", "chemin": "C:\\Data", "difference": 300},
+            {"type": "modification", "chemin": "C:\\Data\\ProjetA", "difference": 200},
+            {"type": "modification", "chemin": "C:\\Data\\ProjetB", "difference": 100},
+        ]
+        resultat = filtrer_dossiers_redondants(dossiers)
+        self.assertEqual(len(resultat), 2)
+        chemins = [d["chemin"] for d in resultat]
+        self.assertIn("C:\\Data\\ProjetA", chemins)
+        self.assertIn("C:\\Data\\ProjetB", chemins)
 
 
 if __name__ == "__main__":
