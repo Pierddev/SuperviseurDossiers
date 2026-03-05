@@ -263,6 +263,7 @@ def scanner() -> None:
     """
     connexion_mysql = None
     id_scan = None
+    debut_scan = time.time()
     try:
         connexion_mysql = connecter_base_de_donnees()
         id_scan = creer_scan(connexion_mysql)
@@ -336,6 +337,19 @@ def scanner() -> None:
 
         if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0:
             message += "\n\nAucun dossier modifié ou nouveau"
+
+        # Calcul de la durée du scan
+        duree_scan = time.time() - debut_scan
+        heures = int(duree_scan // 3600)
+        minutes = int((duree_scan % 3600) // 60)
+        secondes = int(duree_scan % 60)
+        if heures > 0:
+            duree_formatee = f"{heures}h {minutes}min {secondes}s"
+        elif minutes > 0:
+            duree_formatee = f"{minutes}min {secondes}s"
+        else:
+            duree_formatee = f"{secondes}s"
+        message += f"\n⏱️ Durée du scan : {duree_formatee}"
 
         terminer_scan(connexion_mysql, id_scan, "termine")
         envoyer_notif_teams(message)
