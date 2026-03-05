@@ -456,7 +456,7 @@ def scanner() -> None:
         else:
             duree_formatee = f"{secondes}s"
 
-        message += f"\n📅 {datetime.now().strftime('%d/%m/%Y à %H:%M')} | <br>⏱️ Durée du scan : {duree_formatee}\n"
+        message += f"\n<br>📅 {datetime.now().strftime('%d/%m/%Y à %H:%M')} | ⏱️ Durée du scan : {duree_formatee}\n"
 
         if len(nouveaux_dossiers) > 0:
             message += "\n<br>Nouveaux dossiers:\n"
