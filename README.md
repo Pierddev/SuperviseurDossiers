@@ -174,8 +174,11 @@ cp .env.example .env
 # Créer les tables dans MySQL
 # Exécuter le schéma SQL ci-dessus dans votre base de données
 
-# Lancer le script
+# Lancer le script (mode planifié)
 python main.py
+
+# Lancer un scan immédiat (puis quitte)
+python main.py --scan-now
 ```
 
 ## 📦 Déploiement sur Windows Server
@@ -232,6 +235,7 @@ Dossiers modifiés :
 Variation totale : +200.75 Mo
 
 Scan terminé avec succès
+⏱️ Durée du scan : 10s
 ```
 
 ## 📂 Structure du projet
