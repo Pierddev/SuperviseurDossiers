@@ -20,7 +20,7 @@ class TestScanner(unittest.TestCase):
     @patch("main.deconnecter_base_de_donnees")
     @patch("main.envoyer_notif_teams")
     @patch("main.terminer_scan")
-    @patch("main.inserer_ou_mettre_a_jour_dossier")
+    @patch("main.traiter_dossiers_en_lot")
     @patch("main.scanner_arborescence")
     @patch("main.creer_scan")
     @patch("main.connecter_base_de_donnees")
@@ -29,22 +29,23 @@ class TestScanner(unittest.TestCase):
         mock_connect,
         mock_creer,
         mock_scanner_arbo,
-        mock_inserer,
+        mock_traiter,
         mock_terminer,
         mock_notif,
         mock_deconnect,
     ):
-        """Le scanner doit suivre la séquence : connecter → créer scan → scanner_arborescence → traiter → terminer → notifier → déconnecter."""
+        """Le scanner doit suivre la séquence : connecter → créer scan → scanner_arborescence → traiter_en_lot → terminer → notifier → déconnecter."""
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
         mock_scanner_arbo.return_value = {"C:\\test": 0}
-        mock_inserer.return_value = None
+        mock_traiter.return_value = ([], [], 0)
 
         scanner()
 
         mock_connect.assert_called_once()
         mock_creer.assert_called_once()
         mock_scanner_arbo.assert_called_once()
+        mock_traiter.assert_called_once()
         mock_terminer.assert_called_once()
         mock_notif.assert_called_once()
         mock_deconnect.assert_called_once()
@@ -52,7 +53,7 @@ class TestScanner(unittest.TestCase):
     @patch("main.deconnecter_base_de_donnees")
     @patch("main.envoyer_notif_teams")
     @patch("main.terminer_scan")
-    @patch("main.inserer_ou_mettre_a_jour_dossier")
+    @patch("main.traiter_dossiers_en_lot")
     @patch("main.scanner_arborescence")
     @patch("main.creer_scan")
     @patch("main.connecter_base_de_donnees")
@@ -61,7 +62,7 @@ class TestScanner(unittest.TestCase):
         mock_connect,
         mock_creer,
         mock_scanner_arbo,
-        mock_inserer,
+        mock_traiter,
         mock_terminer,
         mock_notif,
         mock_deconnect,
@@ -70,7 +71,7 @@ class TestScanner(unittest.TestCase):
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
         mock_scanner_arbo.return_value = {}
-        mock_inserer.return_value = None
+        mock_traiter.return_value = ([], [], 0)
 
         scanner()
 
@@ -81,7 +82,7 @@ class TestScanner(unittest.TestCase):
     @patch("main.deconnecter_base_de_donnees")
     @patch("main.envoyer_notif_teams")
     @patch("main.terminer_scan")
-    @patch("main.inserer_ou_mettre_a_jour_dossier")
+    @patch("main.traiter_dossiers_en_lot")
     @patch("main.scanner_arborescence")
     @patch("main.creer_scan")
     @patch("main.connecter_base_de_donnees")
@@ -90,7 +91,7 @@ class TestScanner(unittest.TestCase):
         mock_connect,
         mock_creer,
         mock_scanner_arbo,
-        mock_inserer,
+        mock_traiter,
         mock_terminer,
         mock_notif,
         mock_deconnect,
@@ -99,11 +100,11 @@ class TestScanner(unittest.TestCase):
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
         mock_scanner_arbo.return_value = {"C:\\nouveau": 200 * 1024 * 1024}
-        mock_inserer.return_value = {
-            "type": "nouveau",
-            "chemin": "C:\\nouveau",
-            "taille": 200,
-        }
+        mock_traiter.return_value = (
+            [{"type": "nouveau", "chemin": "C:\\nouveau", "taille": 200}],
+            [],
+            200,
+        )
 
         scanner()
 
@@ -114,7 +115,7 @@ class TestScanner(unittest.TestCase):
     @patch("main.deconnecter_base_de_donnees")
     @patch("main.envoyer_notif_teams")
     @patch("main.terminer_scan")
-    @patch("main.inserer_ou_mettre_a_jour_dossier")
+    @patch("main.traiter_dossiers_en_lot")
     @patch("main.scanner_arborescence")
     @patch("main.creer_scan")
     @patch("main.connecter_base_de_donnees")
@@ -123,7 +124,7 @@ class TestScanner(unittest.TestCase):
         mock_connect,
         mock_creer,
         mock_scanner_arbo,
-        mock_inserer,
+        mock_traiter,
         mock_terminer,
         mock_notif,
         mock_deconnect,
@@ -132,11 +133,11 @@ class TestScanner(unittest.TestCase):
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
         mock_scanner_arbo.return_value = {"C:\\modifie": 0}
-        mock_inserer.return_value = {
-            "type": "modification",
-            "chemin": "C:\\modifie",
-            "difference": 150,
-        }
+        mock_traiter.return_value = (
+            [],
+            [{"type": "modification", "chemin": "C:\\modifie", "difference": 150}],
+            0,
+        )
 
         scanner()
 
@@ -148,7 +149,7 @@ class TestScanner(unittest.TestCase):
     @patch("main.deconnecter_base_de_donnees")
     @patch("main.envoyer_notif_teams")
     @patch("main.terminer_scan")
-    @patch("main.inserer_ou_mettre_a_jour_dossier")
+    @patch("main.traiter_dossiers_en_lot")
     @patch("main.scanner_arborescence")
     @patch("main.creer_scan")
     @patch("main.connecter_base_de_donnees")
@@ -157,7 +158,7 @@ class TestScanner(unittest.TestCase):
         mock_connect,
         mock_creer,
         mock_scanner_arbo,
-        mock_inserer,
+        mock_traiter,
         mock_terminer,
         mock_notif,
         mock_deconnect,
@@ -166,7 +167,7 @@ class TestScanner(unittest.TestCase):
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
         mock_scanner_arbo.return_value = {"C:\\stable": 0}
-        mock_inserer.return_value = None
+        mock_traiter.return_value = ([], [], 0)
 
         scanner()
 
@@ -176,7 +177,7 @@ class TestScanner(unittest.TestCase):
     @patch("main.deconnecter_base_de_donnees")
     @patch("main.envoyer_notif_teams")
     @patch("main.terminer_scan")
-    @patch("main.inserer_ou_mettre_a_jour_dossier")
+    @patch("main.traiter_dossiers_en_lot")
     @patch("main.scanner_arborescence")
     @patch("main.creer_scan")
     @patch("main.connecter_base_de_donnees")
@@ -185,7 +186,7 @@ class TestScanner(unittest.TestCase):
         mock_connect,
         mock_creer,
         mock_scanner_arbo,
-        mock_inserer,
+        mock_traiter,
         mock_terminer,
         mock_notif,
         mock_deconnect,
@@ -194,7 +195,7 @@ class TestScanner(unittest.TestCase):
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
         mock_scanner_arbo.return_value = {}
-        mock_inserer.return_value = None
+        mock_traiter.return_value = ([], [], 0)
 
         scanner()
 
@@ -204,7 +205,7 @@ class TestScanner(unittest.TestCase):
     @patch("main.deconnecter_base_de_donnees")
     @patch("main.envoyer_notif_teams")
     @patch("main.terminer_scan")
-    @patch("main.inserer_ou_mettre_a_jour_dossier")
+    @patch("main.traiter_dossiers_en_lot")
     @patch("main.scanner_arborescence")
     @patch("main.creer_scan")
     @patch("main.connecter_base_de_donnees")
@@ -213,7 +214,7 @@ class TestScanner(unittest.TestCase):
         mock_connect,
         mock_creer,
         mock_scanner_arbo,
-        mock_inserer,
+        mock_traiter,
         mock_terminer,
         mock_notif,
         mock_deconnect,
@@ -222,11 +223,11 @@ class TestScanner(unittest.TestCase):
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
         mock_scanner_arbo.return_value = {"C:\\reduit": 0}
-        mock_inserer.return_value = {
-            "type": "modification",
-            "chemin": "C:\\reduit",
-            "difference": -200,
-        }
+        mock_traiter.return_value = (
+            [],
+            [{"type": "modification", "chemin": "C:\\reduit", "difference": -200}],
+            0,
+        )
 
         scanner()
 

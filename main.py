@@ -291,6 +291,96 @@ def inserer_ou_mettre_a_jour_dossier(
         )
 
 
+def traiter_dossiers_en_lot(
+    connexion_mysql: mysql.connector.MySQLConnection,
+    dossiers_avec_tailles: dict[str, int],
+) -> tuple[list, list, int]:
+    """
+    Traite tous les dossiers en lot pour optimiser les accès BDD.
+    Charge tous les dossiers existants en mémoire (1 seul SELECT),
+    puis fait les INSERT/UPDATE avec un commit tous les 5000 dossiers.
+    Retourne (nouveaux_dossiers, dossiers_modifies, taille_totale_scan).
+    """
+    seuil = int(os.getenv("MODIFICATION_TAILLE_IMPORTANTE"))
+    curseur = connexion_mysql.cursor()
+
+    # Charge TOUS les dossiers existants en mémoire (1 seule requête)
+    curseur.execute(
+        "SELECT d.id_dossier, d.dossier_chemin, d.dossier_est_nouveau, "
+        "t.taille_actuel_scan FROM sudo_dossiers d "
+        "LEFT JOIN sudo_tailles t ON d.id_dossier = t.id_dossier"
+    )
+    dossiers_existants = {
+        row[1]: {"id": row[0], "est_nouveau": row[2], "taille": row[3]}
+        for row in curseur.fetchall()
+    }
+
+    nouveaux_dossiers = []
+    dossiers_modifies = []
+    taille_totale_scan = 0
+    compteur = 0
+
+    for chemin, taille_octets in dossiers_avec_tailles.items():
+        taille_en_mo = round(taille_octets / (1024**2))
+        taille_totale_scan += taille_en_mo
+
+        if chemin in dossiers_existants:
+            # Dossier existant → UPDATE
+            info = dossiers_existants[chemin]
+            id_dossier = info["id"]
+            taille_precedente = info["taille"] or 0
+
+            if info["est_nouveau"] == 1:
+                curseur.execute(
+                    "UPDATE sudo_dossiers SET dossier_est_nouveau = 0 WHERE id_dossier = %s",
+                    (id_dossier,),
+                )
+
+            curseur.execute(
+                "UPDATE sudo_tailles SET taille_dernier_scan = taille_actuel_scan, "
+                "taille_actuel_scan = %s WHERE id_dossier = %s",
+                (taille_en_mo, id_dossier),
+            )
+
+            difference = abs(int(taille_precedente) - taille_en_mo)
+            if difference > seuil:
+                dossiers_modifies.append(
+                    {
+                        "type": "modification",
+                        "chemin": chemin,
+                        "difference": taille_en_mo - int(taille_precedente),
+                    }
+                )
+        else:
+            # Nouveau dossier → INSERT
+            curseur.execute(
+                "INSERT INTO sudo_dossiers (dossier_chemin, dossier_est_nouveau) VALUES (%s, 1)",
+                (chemin,),
+            )
+            id_dossier = curseur.lastrowid
+            curseur.execute(
+                "INSERT INTO sudo_tailles (id_dossier, taille_actuel_scan) VALUES (%s, %s)",
+                (id_dossier, taille_en_mo),
+            )
+
+            if taille_en_mo > seuil:
+                nouveaux_dossiers.append(
+                    {
+                        "type": "nouveau",
+                        "chemin": chemin,
+                        "taille": taille_en_mo,
+                    }
+                )
+
+        compteur += 1
+        if compteur % 5000 == 0:
+            connexion_mysql.commit()
+
+    connexion_mysql.commit()
+    curseur.close()
+    return nouveaux_dossiers, dossiers_modifies, taille_totale_scan
+
+
 def scanner() -> None:
     """
     Scanne tous les dossiers à partir des chemins racines définis dans .env.
@@ -319,20 +409,12 @@ def scanner() -> None:
             if not chemin_racine:
                 continue
             dossiers_avec_tailles = scanner_arborescence(chemin_racine, chemins_exclus)
-            for dossier, taille_dossier in dossiers_avec_tailles.items():
-                taille_en_mo = round(
-                    taille_dossier / (1024**2)
-                )  # Convertit en Mo (arrondi entier)
-                taille_totale_scan += taille_en_mo
-                resultat = inserer_ou_mettre_a_jour_dossier(
-                    connexion_mysql, dossier, taille_en_mo
-                )
-
-                if resultat:
-                    if resultat["type"] == "nouveau":
-                        nouveaux_dossiers.append(resultat)
-                    elif resultat["type"] == "modification":
-                        dossiers_modifies.append(resultat)
+            nouveaux, modifies, taille_scan = traiter_dossiers_en_lot(
+                connexion_mysql, dossiers_avec_tailles
+            )
+            nouveaux_dossiers.extend(nouveaux)
+            dossiers_modifies.extend(modifies)
+            taille_totale_scan += taille_scan
 
         # Construction du message pour la notification Teams
         message = f"Scan du {datetime.now().strftime('%d/%m/%Y à %H:%M')}\n"
