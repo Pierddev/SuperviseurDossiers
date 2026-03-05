@@ -128,6 +128,40 @@ def lister_tous_les_dossier(
     return liste_des_dossiers
 
 
+def scanner_arborescence(
+    chemin_racine: str, chemins_exclus: list[str] = None
+) -> dict[str, int]:
+    """
+    Parcourt l'arborescence en un seul pass (bottom-up) et retourne un dictionnaire
+    {chemin_dossier: taille_en_octets} incluant les sous-dossiers.
+    """
+    tailles = {}
+
+    for dossier, sous_dossiers, fichiers in os.walk(
+        chemin_racine, topdown=False, followlinks=False
+    ):
+        # Vérifie si le dossier est exclu
+        if chemins_exclus and est_chemin_exclu(dossier, chemins_exclus):
+            continue
+
+        # Calcule la taille des fichiers directs du dossier
+        taille_fichiers = 0
+        for fichier in fichiers:
+            try:
+                taille_fichiers += os.path.getsize(os.path.join(dossier, fichier))
+            except (OSError, PermissionError):
+                pass
+
+        # Ajoute la taille des sous-dossiers (déjà calculés car topdown=False)
+        taille_sous_dossiers = sum(
+            tailles.get(os.path.join(dossier, sd), 0) for sd in sous_dossiers
+        )
+
+        tailles[dossier] = taille_fichiers + taille_sous_dossiers
+
+    return tailles
+
+
 def creer_scan(connexion_mysql: mysql.connector.MySQLConnection) -> int | None:
     """
     Crée un nouveau scan dans la table sudo_scans avec le statut 'en_cours'.
@@ -284,9 +318,8 @@ def scanner() -> None:
             chemin_racine = chemin_racine.strip()
             if not chemin_racine:
                 continue
-            liste_dossiers = lister_tous_les_dossier(chemin_racine, chemins_exclus)
-            for dossier in liste_dossiers:
-                taille_dossier = calculer_taille_dossier(dossier)
+            dossiers_avec_tailles = scanner_arborescence(chemin_racine, chemins_exclus)
+            for dossier, taille_dossier in dossiers_avec_tailles.items():
                 taille_en_mo = round(
                     taille_dossier / (1024**2)
                 )  # Convertit en Mo (arrondi entier)
@@ -300,17 +333,6 @@ def scanner() -> None:
                         nouveaux_dossiers.append(resultat)
                     elif resultat["type"] == "modification":
                         dossiers_modifies.append(resultat)
-
-        # Calcul de la variation totale d'espace
-        # Après le scan, taille_dernier_scan contient les anciennes valeurs
-        curseur = connexion_mysql.cursor()
-        curseur.execute(
-            "SELECT COALESCE(SUM(taille_dernier_scan), 0) FROM sudo_tailles"
-        )
-        somme_dernier_scan = curseur.fetchone()[0]
-        curseur.close()
-
-        variation_totale = taille_totale_scan - int(somme_dernier_scan)
 
         # Construction du message pour la notification Teams
         message = f"Scan du {datetime.now().strftime('%d/%m/%Y à %H:%M')}\n"
@@ -328,12 +350,7 @@ def scanner() -> None:
                     f"- {dossier['chemin']} ({signe}{dossier['difference']} Mo)\n"
                 )
 
-        # Variation totale
-        if variation_totale != 0:
-            signe_total = "+" if variation_totale > 0 else ""
-            message += f"\nVariation totale : {signe_total}{variation_totale} Mo"
-
-        message += "\n\nScan terminé avec succès"
+        message += "<br><br>Scan terminé avec succès"
 
         if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0:
             message += "\n\nAucun dossier modifié ou nouveau"
@@ -349,7 +366,7 @@ def scanner() -> None:
             duree_formatee = f"{minutes}min {secondes}s"
         else:
             duree_formatee = f"{secondes}s"
-        message += f"\n⏱️ Durée du scan : {duree_formatee}"
+        message += f"<br>⏱️ Durée du scan : {duree_formatee}"
 
         terminer_scan(connexion_mysql, id_scan, "termine")
         envoyer_notif_teams(message)

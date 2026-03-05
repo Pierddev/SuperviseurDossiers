@@ -11,7 +11,12 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from main import calculer_taille_dossier, lister_tous_les_dossier, est_chemin_exclu
+from main import (
+    calculer_taille_dossier,
+    lister_tous_les_dossier,
+    est_chemin_exclu,
+    scanner_arborescence,
+)
 
 
 class TestCalculerTailleDossier(unittest.TestCase):
@@ -205,6 +210,78 @@ class TestListerTousLesDossier(unittest.TestCase):
         os.makedirs(os.path.join(self.dossier_temp, "dossier_a"))
         resultat = lister_tous_les_dossier(self.dossier_temp)
         self.assertEqual(len(resultat), 2)  # racine + 1 sous-dossier
+
+
+class TestScannerArborescence(unittest.TestCase):
+    """Tests pour la fonction scanner_arborescence."""
+
+    def setUp(self):
+        self.dossier_temp = tempfile.mkdtemp()
+
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.dossier_temp, ignore_errors=True)
+
+    def _creer_fichier(self, chemin_relatif, contenu):
+        chemin_complet = os.path.join(self.dossier_temp, chemin_relatif)
+        os.makedirs(os.path.dirname(chemin_complet), exist_ok=True)
+        with open(chemin_complet, "w") as f:
+            f.write(contenu)
+        return chemin_complet
+
+    def test_dossier_vide(self):
+        """Un dossier vide doit avoir une taille de 0."""
+        resultat = scanner_arborescence(self.dossier_temp)
+        self.assertEqual(resultat[self.dossier_temp], 0)
+
+    def test_fichier_direct(self):
+        """La taille doit correspondre au fichier direct."""
+        self._creer_fichier("fichier.txt", "Bonjour")
+        resultat = scanner_arborescence(self.dossier_temp)
+        taille_attendue = os.path.getsize(
+            os.path.join(self.dossier_temp, "fichier.txt")
+        )
+        self.assertEqual(resultat[self.dossier_temp], taille_attendue)
+
+    def test_parent_inclut_enfants(self):
+        """La taille du parent doit inclure la taille des sous-dossiers."""
+        self._creer_fichier("racine.txt", "racine")
+        self._creer_fichier("sous/profond.txt", "profond")
+        resultat = scanner_arborescence(self.dossier_temp)
+        taille_racine = os.path.getsize(os.path.join(self.dossier_temp, "racine.txt"))
+        taille_profond = os.path.getsize(
+            os.path.join(self.dossier_temp, "sous", "profond.txt")
+        )
+        # Le parent doit contenir la somme
+        self.assertEqual(resultat[self.dossier_temp], taille_racine + taille_profond)
+        # Le sous-dossier doit contenir uniquement son fichier
+        self.assertEqual(
+            resultat[os.path.join(self.dossier_temp, "sous")], taille_profond
+        )
+
+    def test_exclusion(self):
+        """Un dossier exclu ne doit pas apparaître dans le résultat."""
+        self._creer_fichier("inclus/a.txt", "aaa")
+        chemin_exclu = os.path.join(self.dossier_temp, "exclu")
+        self._creer_fichier("exclu/b.txt", "bbb")
+        resultat = scanner_arborescence(self.dossier_temp, [chemin_exclu])
+        self.assertNotIn(chemin_exclu, resultat)
+        self.assertIn(os.path.join(self.dossier_temp, "inclus"), resultat)
+
+    def test_coherence_avec_calculer_taille(self):
+        """Les tailles doivent être identiques à calculer_taille_dossier."""
+        self._creer_fichier("a.txt", "AAA")
+        self._creer_fichier("sous/b.txt", "BBBBBB")
+        resultat = scanner_arborescence(self.dossier_temp)
+        # Vérifie que chaque dossier a la même taille que calculer_taille_dossier
+        for chemin, taille in resultat.items():
+            self.assertEqual(taille, calculer_taille_dossier(chemin))
+
+    def test_retourne_un_dict(self):
+        """La fonction doit retourner un dictionnaire."""
+        resultat = scanner_arborescence(self.dossier_temp)
+        self.assertIsInstance(resultat, dict)
 
 
 if __name__ == "__main__":
