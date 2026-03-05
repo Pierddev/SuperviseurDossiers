@@ -70,6 +70,9 @@ CREATE TABLE IF NOT EXISTS sudo_scans (
   scan_statut ENUM('en_cours', 'termine', 'erreur') NULL,
   PRIMARY KEY (id_scan)
 ) ENGINE = InnoDB;
+
+-- Index pour optimiser les recherches par chemin de dossier
+CREATE INDEX idx_dossier_chemin ON sudo_dossiers(dossier_chemin);
 ```
 
 ### Mise en place
