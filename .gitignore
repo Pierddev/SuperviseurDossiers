@@ -1,8 +1,8 @@
 .env
 .venv
-__pycache__/main.cpython-314.pyc
 /build
 /dist
 SuperviseurDossiers.spec
 exe_generator.bat
+/__pycache__
 /tests/__pycache__

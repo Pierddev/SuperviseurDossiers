@@ -14,7 +14,7 @@ import mysql.connector
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from main import (
+from db import (
     connecter_base_de_donnees,
     deconnecter_base_de_donnees,
     creer_scan,
@@ -26,7 +26,8 @@ from main import (
 class TestConnecterBaseDeDonnees(unittest.TestCase):
     """Tests pour la fonction connecter_base_de_donnees."""
 
-    @patch("main.mysql.connector.connect")
+    @patch.dict(os.environ, {"DB_HOST": "localhost", "DB_PORT": "3306", "DB_USER": "root", "DB_PASSWORD": "", "DB_NAME": "test"})
+    @patch("db.mysql.connector.connect")
     def test_connexion_reussie(self, mock_connect):
         """Doit retourner un objet connexion si la connexion réussit."""
         mock_connexion = MagicMock()
@@ -34,7 +35,8 @@ class TestConnecterBaseDeDonnees(unittest.TestCase):
         resultat = connecter_base_de_donnees()
         self.assertEqual(resultat, mock_connexion)
 
-    @patch("main.mysql.connector.connect")
+    @patch.dict(os.environ, {"DB_HOST": "localhost", "DB_PORT": "3306", "DB_USER": "root", "DB_PASSWORD": "", "DB_NAME": "test"})
+    @patch("db.mysql.connector.connect")
     def test_connexion_utilise_variables_env(self, mock_connect):
         """Doit utiliser les variables d'environnement pour la connexion."""
         mock_connect.return_value = MagicMock()
@@ -47,16 +49,16 @@ class TestConnecterBaseDeDonnees(unittest.TestCase):
         self.assertIn("password", kwargs)
         self.assertIn("database", kwargs)
 
-    @patch("main.envoyer_notif_teams")
-    @patch("main.mysql.connector.connect")
+    @patch("db.envoyer_notif_teams")
+    @patch("db.mysql.connector.connect")
     def test_connexion_echouee_retourne_none(self, mock_connect, mock_notif):
         """Doit retourner None si la connexion échoue."""
         mock_connect.side_effect = mysql.connector.Error("Connexion refusée")
         resultat = connecter_base_de_donnees()
         self.assertIsNone(resultat)
 
-    @patch("main.envoyer_notif_teams")
-    @patch("main.mysql.connector.connect")
+    @patch("db.envoyer_notif_teams")
+    @patch("db.mysql.connector.connect")
     def test_connexion_echouee_envoie_notification(self, mock_connect, mock_notif):
         """Doit envoyer une notification Teams si la connexion échoue."""
         mock_connect.side_effect = mysql.connector.Error("Connexion refusée")
@@ -117,7 +119,7 @@ class TestCreerScan(unittest.TestCase):
         creer_scan(mock_connexion)
         mock_curseur.close.assert_called_once()
 
-    @patch("main.envoyer_notif_teams")
+    @patch("db.envoyer_notif_teams")
     def test_erreur_retourne_none(self, mock_notif):
         """Doit retourner None en cas d'erreur SQL."""
         mock_connexion = MagicMock()
@@ -126,7 +128,7 @@ class TestCreerScan(unittest.TestCase):
         resultat = creer_scan(mock_connexion)
         self.assertIsNone(resultat)
 
-    @patch("main.envoyer_notif_teams")
+    @patch("db.envoyer_notif_teams")
     def test_erreur_envoie_notification(self, mock_notif):
         """Doit envoyer une notification Teams en cas d'erreur SQL."""
         mock_connexion = MagicMock()
@@ -170,7 +172,7 @@ class TestTerminerScan(unittest.TestCase):
         terminer_scan(mock_connexion, 1, "termine")
         mock_curseur.close.assert_called_once()
 
-    @patch("main.envoyer_notif_teams")
+    @patch("db.envoyer_notif_teams")
     def test_erreur_envoie_notification(self, mock_notif):
         """Doit envoyer une notification Teams en cas d'erreur SQL."""
         mock_connexion = MagicMock()
@@ -267,7 +269,7 @@ class TestInsererOuMettreAJourDossier(unittest.TestCase):
         mock_connexion.commit.assert_called()
 
     @patch.dict(os.environ, {"MODIFICATION_TAILLE_IMPORTANTE": "100"})
-    @patch("main.envoyer_notif_teams")
+    @patch("db.envoyer_notif_teams")
     def test_erreur_sql_envoie_notification(self, mock_notif):
         """Doit envoyer une notification Teams en cas d'erreur SQL."""
         mock_connexion = MagicMock()

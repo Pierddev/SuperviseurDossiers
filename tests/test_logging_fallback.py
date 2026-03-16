@@ -11,10 +11,13 @@ import sys
 import unittest
 from unittest.mock import patch, MagicMock
 
-# Ajoute le dossier parent au path pour pouvoir importer main
+# Ajoute le dossier parent au path pour pouvoir importer les modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from main import envoyer_notif_teams, logger
+# Importe main pour déclencher la configuration du logging
+import main  # noqa: F401
+
+from notifications import envoyer_notif_teams, logger
 
 
 class TestLoggingFallback(unittest.TestCase):
@@ -28,7 +31,7 @@ class TestLoggingFallback(unittest.TestCase):
 
     def test_logger_nom_correct(self):
         """Le logger doit porter le nom du module 'main'."""
-        self.assertEqual(logger.name, "main")
+        self.assertEqual(logger.name, "notifications")
 
     def test_logger_niveau_error(self):
         """Le root logger doit être configuré au niveau ERROR."""
@@ -68,7 +71,7 @@ class TestLoggingFallback(unittest.TestCase):
 
     # --- Tests du fallback : erreur Teams => log dans le fichier ---
 
-    @patch("main.requests.post")
+    @patch("notifications.requests.post")
     def test_erreur_connexion_teams_est_loguee(self, mock_post):
         """Quand requests.post lève une exception, l'erreur doit être loguée."""
         from requests.exceptions import ConnectionError
@@ -81,7 +84,7 @@ class TestLoggingFallback(unittest.TestCase):
             args = mock_logger_error.call_args[0][0]
             self.assertIn("Erreur lors de l'envoi de la notification", args)
 
-    @patch("main.requests.post")
+    @patch("notifications.requests.post")
     def test_erreur_timeout_teams_est_loguee(self, mock_post):
         """Quand requests.post timeout, l'erreur doit être loguée."""
         from requests.exceptions import Timeout
@@ -94,7 +97,7 @@ class TestLoggingFallback(unittest.TestCase):
             args = mock_logger_error.call_args[0][0]
             self.assertIn("Erreur lors de l'envoi de la notification", args)
 
-    @patch("main.requests.post")
+    @patch("notifications.requests.post")
     def test_erreur_http_teams_est_loguee(self, mock_post):
         """Quand le webhook Teams retourne un code 4xx/5xx, l'erreur doit être loguée."""
         mock_response = MagicMock()
@@ -109,7 +112,7 @@ class TestLoggingFallback(unittest.TestCase):
             args = mock_logger_error.call_args[0][0]
             self.assertIn("Erreur lors de l'envoi de la notification", args)
 
-    @patch("main.requests.post")
+    @patch("notifications.requests.post")
     def test_pas_de_log_si_teams_ok(self, mock_post):
         """Si la notification Teams réussit, aucune erreur ne doit être loguée."""
         mock_response = MagicMock()
@@ -120,7 +123,7 @@ class TestLoggingFallback(unittest.TestCase):
             envoyer_notif_teams("Test message")
             mock_logger_error.assert_not_called()
 
-    @patch("main.requests.post")
+    @patch("notifications.requests.post")
     def test_notif_teams_ne_leve_pas_exception(self, mock_post):
         """La fonction envoyer_notif_teams ne doit jamais propager d'exception."""
         from requests.exceptions import ConnectionError
@@ -132,7 +135,7 @@ class TestLoggingFallback(unittest.TestCase):
         except Exception:
             self.fail("envoyer_notif_teams a propagé une exception non gérée")
 
-    @patch("main.requests.post")
+    @patch("notifications.requests.post")
     def test_log_contient_details_erreur(self, mock_post):
         """Le message de log doit contenir les détails de l'erreur originale."""
         from requests.exceptions import ConnectionError
@@ -144,7 +147,7 @@ class TestLoggingFallback(unittest.TestCase):
             args = mock_logger_error.call_args[0][0]
             self.assertIn("DNS resolution failed", args)
 
-    @patch("main.requests.post")
+    @patch("notifications.requests.post")
     @patch.dict(os.environ, {"TEAMS_WEBHOOK_URL": ""})
     def test_url_webhook_vide(self, mock_post):
         """Avec une URL webhook vide, la fonction doit gérer l'erreur sans crash."""

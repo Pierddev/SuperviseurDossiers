@@ -11,19 +11,20 @@ from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from main import scanner
+from scanner import scanner
 
 
 class TestScanner(unittest.TestCase):
     """Tests pour la fonction scanner (orchestration)."""
 
-    @patch("main.deconnecter_base_de_donnees")
-    @patch("main.envoyer_notif_teams")
-    @patch("main.terminer_scan")
-    @patch("main.traiter_dossiers_en_lot")
-    @patch("main.scanner_arborescence")
-    @patch("main.creer_scan")
-    @patch("main.connecter_base_de_donnees")
+    @patch.dict(os.environ, {"CHEMINS_RACINES": "C:\\test", "CHEMINS_EXCLUS": ""})
+    @patch("scanner.deconnecter_base_de_donnees")
+    @patch("scanner.envoyer_notif_teams")
+    @patch("scanner.terminer_scan")
+    @patch("scanner.traiter_dossiers_en_lot")
+    @patch("scanner.scanner_arborescence")
+    @patch("scanner.creer_scan")
+    @patch("scanner.connecter_base_de_donnees")
     def test_sequence_complete(
         self,
         mock_connect,
@@ -50,13 +51,14 @@ class TestScanner(unittest.TestCase):
         mock_notif.assert_called_once()
         mock_deconnect.assert_called_once()
 
-    @patch("main.deconnecter_base_de_donnees")
-    @patch("main.envoyer_notif_teams")
-    @patch("main.terminer_scan")
-    @patch("main.traiter_dossiers_en_lot")
-    @patch("main.scanner_arborescence")
-    @patch("main.creer_scan")
-    @patch("main.connecter_base_de_donnees")
+    @patch.dict(os.environ, {"CHEMINS_RACINES": "C:\\test", "CHEMINS_EXCLUS": ""})
+    @patch("scanner.deconnecter_base_de_donnees")
+    @patch("scanner.envoyer_notif_teams")
+    @patch("scanner.terminer_scan")
+    @patch("scanner.traiter_dossiers_en_lot")
+    @patch("scanner.scanner_arborescence")
+    @patch("scanner.creer_scan")
+    @patch("scanner.connecter_base_de_donnees")
     def test_scan_termine_avec_statut_termine(
         self,
         mock_connect,
@@ -79,13 +81,14 @@ class TestScanner(unittest.TestCase):
         self.assertEqual(args[1], 1)  # id_scan
         self.assertEqual(args[2], "termine")  # statut
 
-    @patch("main.deconnecter_base_de_donnees")
-    @patch("main.envoyer_notif_teams")
-    @patch("main.terminer_scan")
-    @patch("main.traiter_dossiers_en_lot")
-    @patch("main.scanner_arborescence")
-    @patch("main.creer_scan")
-    @patch("main.connecter_base_de_donnees")
+    @patch.dict(os.environ, {"CHEMINS_RACINES": "C:\\test", "CHEMINS_EXCLUS": ""})
+    @patch("scanner.deconnecter_base_de_donnees")
+    @patch("scanner.envoyer_notif_teams")
+    @patch("scanner.terminer_scan")
+    @patch("scanner.traiter_dossiers_en_lot")
+    @patch("scanner.scanner_arborescence")
+    @patch("scanner.creer_scan")
+    @patch("scanner.connecter_base_de_donnees")
     def test_message_contient_nouveaux_dossiers(
         self,
         mock_connect,
@@ -112,13 +115,14 @@ class TestScanner(unittest.TestCase):
         self.assertIn("Nouveaux dossiers", message)
         self.assertIn("C:\\nouveau", message)
 
-    @patch("main.deconnecter_base_de_donnees")
-    @patch("main.envoyer_notif_teams")
-    @patch("main.terminer_scan")
-    @patch("main.traiter_dossiers_en_lot")
-    @patch("main.scanner_arborescence")
-    @patch("main.creer_scan")
-    @patch("main.connecter_base_de_donnees")
+    @patch.dict(os.environ, {"CHEMINS_RACINES": "C:\\test", "CHEMINS_EXCLUS": ""})
+    @patch("scanner.deconnecter_base_de_donnees")
+    @patch("scanner.envoyer_notif_teams")
+    @patch("scanner.terminer_scan")
+    @patch("scanner.traiter_dossiers_en_lot")
+    @patch("scanner.scanner_arborescence")
+    @patch("scanner.creer_scan")
+    @patch("scanner.connecter_base_de_donnees")
     def test_message_contient_dossiers_modifies(
         self,
         mock_connect,
@@ -146,13 +150,14 @@ class TestScanner(unittest.TestCase):
         self.assertIn("C:\\modifie", message)
         self.assertIn("+150", message)
 
-    @patch("main.deconnecter_base_de_donnees")
-    @patch("main.envoyer_notif_teams")
-    @patch("main.terminer_scan")
-    @patch("main.traiter_dossiers_en_lot")
-    @patch("main.scanner_arborescence")
-    @patch("main.creer_scan")
-    @patch("main.connecter_base_de_donnees")
+    @patch.dict(os.environ, {"CHEMINS_RACINES": "C:\\test", "CHEMINS_EXCLUS": ""})
+    @patch("scanner.deconnecter_base_de_donnees")
+    @patch("scanner.envoyer_notif_teams")
+    @patch("scanner.terminer_scan")
+    @patch("scanner.traiter_dossiers_en_lot")
+    @patch("scanner.scanner_arborescence")
+    @patch("scanner.creer_scan")
+    @patch("scanner.connecter_base_de_donnees")
     def test_message_sans_modification(
         self,
         mock_connect,
@@ -174,13 +179,14 @@ class TestScanner(unittest.TestCase):
         message = mock_notif.call_args[0][0]
         self.assertIn("Aucun dossier modifié ou nouveau", message)
 
-    @patch("main.deconnecter_base_de_donnees")
-    @patch("main.envoyer_notif_teams")
-    @patch("main.terminer_scan")
-    @patch("main.traiter_dossiers_en_lot")
-    @patch("main.scanner_arborescence")
-    @patch("main.creer_scan")
-    @patch("main.connecter_base_de_donnees")
+    @patch.dict(os.environ, {"CHEMINS_RACINES": "C:\\test", "CHEMINS_EXCLUS": ""})
+    @patch("scanner.deconnecter_base_de_donnees")
+    @patch("scanner.envoyer_notif_teams")
+    @patch("scanner.terminer_scan")
+    @patch("scanner.traiter_dossiers_en_lot")
+    @patch("scanner.scanner_arborescence")
+    @patch("scanner.creer_scan")
+    @patch("scanner.connecter_base_de_donnees")
     def test_message_contient_la_date(
         self,
         mock_connect,
@@ -200,15 +206,16 @@ class TestScanner(unittest.TestCase):
         scanner()
 
         message = mock_notif.call_args[0][0]
-        self.assertIn("Scan du", message)
+        self.assertIn("📅", message)
 
-    @patch("main.deconnecter_base_de_donnees")
-    @patch("main.envoyer_notif_teams")
-    @patch("main.terminer_scan")
-    @patch("main.traiter_dossiers_en_lot")
-    @patch("main.scanner_arborescence")
-    @patch("main.creer_scan")
-    @patch("main.connecter_base_de_donnees")
+    @patch.dict(os.environ, {"CHEMINS_RACINES": "C:\\test", "CHEMINS_EXCLUS": ""})
+    @patch("scanner.deconnecter_base_de_donnees")
+    @patch("scanner.envoyer_notif_teams")
+    @patch("scanner.terminer_scan")
+    @patch("scanner.traiter_dossiers_en_lot")
+    @patch("scanner.scanner_arborescence")
+    @patch("scanner.creer_scan")
+    @patch("scanner.connecter_base_de_donnees")
     def test_signe_negatif_pour_reduction(
         self,
         mock_connect,
