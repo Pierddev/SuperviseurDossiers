@@ -245,12 +245,17 @@ Scan terminé avec succès
 
 ```
 SuperviseurDossiers/
-├── main.py              # Script principal
+├── main.py              # Point d'entrée (config, schedule, argparse)
+├── scanner.py           # Orchestration du scan
+├── db.py                # Fonctions base de données MySQL
+├── notifications.py     # Envoi de notifications Teams
+├── fichiers.py          # Gestion du système de fichiers
+├── icone.ico            # Icône de l'exécutable
 ├── requirements.txt     # Dépendances Python
 ├── .env                 # Configuration (non versionné)
 ├── .gitignore
 ├── superviseur.log      # Fichier de logs (généré automatiquement)
-└── tests/               # Tests
+└── tests/               # Tests unitaires
 ```
 
 ## 🛠️ Technologies

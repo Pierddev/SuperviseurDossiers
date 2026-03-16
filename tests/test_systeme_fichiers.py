@@ -11,7 +11,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from main import (
+from fichiers import (
     calculer_taille_dossier,
     lister_tous_les_dossier,
     est_chemin_exclu,
