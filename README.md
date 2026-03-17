@@ -20,6 +20,7 @@ Script Python déployé sur **Windows Server** qui analyse automatiquement la ta
 - **Exclusion de chemins** — Permet d'exclure des dossiers du scan (ex: `C:\Windows`)
 - **Stockage en BDD** — Enregistre la taille de chaque dossier en Mo avec historique léger (taille actuelle + taille du dernier scan)
 - **Détection des changements** — Identifie les nouveaux dossiers et les variations de taille significatives (seuil configurable)
+- **Seuils par répertoire** — Possibilité de définir un seuil de notification différent par répertoire (avec matching par préfixe)
 - **Notifications Teams** — Envoie un résumé après chaque scan via webhook Microsoft Teams
 - **Logging** — Enregistre les erreurs dans un fichier `superviseur.log`
 - **Planification** — Scan quotidien automatique à une heure configurable
@@ -145,10 +146,17 @@ CHEMINS_EXCLUS=C:\Windows,C:\Program Files,C:\Program Files (x86)
 # Heure du scan quotidien (format HH:MM)
 HEURE_SCAN="17:30"
 
-# Seuil de notification (en Mo)
+# Seuil de notification par défaut (en Mo)
 # Seuls les nouveaux dossiers et les variations de taille dépassant ce seuil
 # seront inclus dans la notification Teams
-MODIFICATION_TAILLE_IMPORTANTE=100
+SEUIL_DEFAUT=100
+
+# Seuils personnalisés par répertoire (chemin=seuil en Mo, séparés par des ;)
+# Permet de définir un seuil de notification différent pour certains répertoires.
+# Le matching se fait par préfixe : un seuil pour D:\Projets s'applique aussi à D:\Projets\MonProjet
+# Si un chemin correspond à plusieurs préfixes, le plus spécifique (le plus long) gagne.
+# Si vide, tous les répertoires utilisent SEUIL_DEFAUT.
+SEUILS_PERSONNALISES=D:\Projets=50;D:\Archives=500
 
 # Délai entre chaque vérification de l'heure (en secondes, par défaut 5 minutes)
 DELAI_VERIFICATION=300

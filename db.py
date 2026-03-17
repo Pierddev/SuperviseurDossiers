@@ -9,6 +9,62 @@ import mysql.connector
 from notifications import envoyer_notif_teams
 
 
+def parser_seuils_personnalises() -> dict[str, int]:
+    """
+    Parse la variable d'environnement SEUILS_PERSONNALISES.
+    Format attendu : chemin1=seuil1;chemin2=seuil2
+    Retourne un dictionnaire {chemin_normalisé: seuil_en_mo}.
+    """
+    seuils = {}
+    valeur = os.getenv("SEUILS_PERSONNALISES", "")
+    if not valeur.strip():
+        return seuils
+
+    for paire in valeur.split(";"):
+        paire = paire.strip()
+        if "=" not in paire:
+            continue
+        chemin, seuil_str = paire.rsplit("=", 1)
+        chemin = chemin.strip()
+        seuil_str = seuil_str.strip()
+        if not chemin or not seuil_str:
+            continue
+        try:
+            seuils[os.path.normpath(chemin)] = int(seuil_str)
+        except ValueError:
+            # Ignore les entrées avec un seuil non numérique
+            continue
+    return seuils
+
+
+def obtenir_seuil_pour_chemin(
+    chemin: str,
+    seuils_personnalises: dict[str, int],
+    seuil_defaut: int,
+) -> int:
+    """
+    Retourne le seuil à appliquer pour un chemin donné.
+    Cherche le préfixe le plus spécifique (chemin le plus long) dans
+    seuils_personnalises. Si aucun match, retourne seuil_defaut.
+    """
+    chemin_normalise = os.path.normpath(chemin)
+    meilleur_match = None
+    meilleure_longueur = -1
+
+    for chemin_seuil, seuil in seuils_personnalises.items():
+        # Vérifie que le chemin commence par le préfixe + séparateur
+        # ou est exactement le préfixe
+        if (
+            chemin_normalise == chemin_seuil
+            or chemin_normalise.startswith(chemin_seuil + os.sep)
+        ):
+            if len(chemin_seuil) > meilleure_longueur:
+                meilleure_longueur = len(chemin_seuil)
+                meilleur_match = seuil
+
+    return meilleur_match if meilleur_match is not None else seuil_defaut
+
+
 def connecter_base_de_donnees() -> mysql.connector.MySQLConnection | None:
     """
     Connecte à la base de données.
@@ -80,11 +136,17 @@ def inserer_ou_mettre_a_jour_dossier(
     connexion_mysql: mysql.connector.MySQLConnection,
     chemin_dossier: str,
     taille_dossier: int,
+    seuil: int | None = None,
 ) -> dict[str, str] | None:
     """
     Insère ou met à jour un dossier dans la table sudo_dossiers.
-    Retourne un dictionnaire avec les informations du dossier la modification de sa taille est supérieure à la taille définie dans le fichier .env.
+    Retourne un dictionnaire avec les informations du dossier si la modification
+    de sa taille est supérieure au seuil.
+    Si seuil n'est pas fourni, utilise SEUIL_DEFAUT du .env.
     """
+    if seuil is None:
+        seuil = int(os.getenv("SEUIL_DEFAUT"))
+
     dictionnaire_de_retour = None
     try:
         # Crée un curseur pour exécuter des commandes SQL
@@ -108,7 +170,7 @@ def inserer_ou_mettre_a_jour_dossier(
                 (id_dossier, taille_dossier),
             )
 
-            if taille_dossier > int(os.getenv("MODIFICATION_TAILLE_IMPORTANTE")):
+            if taille_dossier > seuil:
                 # Retourne le dictionnaire avec les informations du nouveau dossier pour l'insérer dans la notification Teams
                 dictionnaire_de_retour = {
                     "type": "nouveau",
@@ -142,9 +204,7 @@ def inserer_ou_mettre_a_jour_dossier(
                 int(taille_actuel_scan) - int(taille_dossier)
             )
 
-            if difference_taille_dossier > int(
-                os.getenv("MODIFICATION_TAILLE_IMPORTANTE")
-            ):
+            if difference_taille_dossier > seuil:
                 # Retourne le dictionnaire si la taille de la modification est supérieure à la taille définie dans le fichier .env
                 dictionnaire_de_retour = {
                     "type": "modification",
@@ -175,7 +235,8 @@ def traiter_dossiers_en_lot(
     puis fait les INSERT/UPDATE avec un commit tous les 5000 dossiers.
     Retourne (nouveaux_dossiers, dossiers_modifies, taille_totale_scan).
     """
-    seuil = int(os.getenv("MODIFICATION_TAILLE_IMPORTANTE"))
+    seuil_defaut = int(os.getenv("SEUIL_DEFAUT"))
+    seuils_personnalises = parser_seuils_personnalises()
     curseur = connexion_mysql.cursor()
 
     # Charge TOUS les dossiers existants en mémoire (1 seule requête)
@@ -216,6 +277,7 @@ def traiter_dossiers_en_lot(
                 (taille_en_mo, id_dossier),
             )
 
+            seuil = obtenir_seuil_pour_chemin(chemin, seuils_personnalises, seuil_defaut)
             difference = abs(int(taille_precedente) - taille_en_mo)
             if difference > seuil:
                 dossiers_modifies.append(
@@ -237,6 +299,7 @@ def traiter_dossiers_en_lot(
                 (id_dossier, taille_en_mo),
             )
 
+            seuil = obtenir_seuil_pour_chemin(chemin, seuils_personnalises, seuil_defaut)
             if taille_en_mo > seuil:
                 nouveaux_dossiers.append(
                     {

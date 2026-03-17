@@ -20,6 +20,8 @@ from db import (
     creer_scan,
     terminer_scan,
     inserer_ou_mettre_a_jour_dossier,
+    parser_seuils_personnalises,
+    obtenir_seuil_pour_chemin,
 )
 
 
@@ -210,14 +212,14 @@ class TestInsererOuMettreAJourDossier(unittest.TestCase):
         mock_connexion.cursor.return_value = mock_curseur
         return mock_connexion, mock_curseur
 
-    @patch.dict(os.environ, {"MODIFICATION_TAILLE_IMPORTANTE": "100"})
+    @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
     def test_nouveau_dossier_petit_retourne_none(self):
         """Un nouveau dossier sous le seuil ne doit pas déclencher de notification."""
         mock_connexion, _ = self._mock_connexion_nouveau_dossier()
         resultat = inserer_ou_mettre_a_jour_dossier(mock_connexion, "C:\\test", 50)
         self.assertIsNone(resultat)
 
-    @patch.dict(os.environ, {"MODIFICATION_TAILLE_IMPORTANTE": "100"})
+    @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
     def test_nouveau_dossier_gros_retourne_dict(self):
         """Un nouveau dossier au-dessus du seuil doit retourner un dictionnaire."""
         mock_connexion, _ = self._mock_connexion_nouveau_dossier()
@@ -227,7 +229,7 @@ class TestInsererOuMettreAJourDossier(unittest.TestCase):
         self.assertEqual(resultat["chemin"], "C:\\gros")
         self.assertEqual(resultat["taille"], 200)
 
-    @patch.dict(os.environ, {"MODIFICATION_TAILLE_IMPORTANTE": "100"})
+    @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
     def test_nouveau_dossier_insere_dans_deux_tables(self):
         """Un nouveau dossier doit être inséré dans sudo_dossiers ET sudo_tailles."""
         mock_connexion, mock_curseur = self._mock_connexion_nouveau_dossier()
@@ -236,14 +238,14 @@ class TestInsererOuMettreAJourDossier(unittest.TestCase):
         self.assertTrue(any("INSERT INTO sudo_dossiers" in r for r in requetes))
         self.assertTrue(any("INSERT INTO sudo_tailles" in r for r in requetes))
 
-    @patch.dict(os.environ, {"MODIFICATION_TAILLE_IMPORTANTE": "100"})
+    @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
     def test_dossier_existant_petite_modif_retourne_none(self):
         """Une modification sous le seuil ne doit pas déclencher de notification."""
         mock_connexion, _ = self._mock_connexion_dossier_existant(taille_actuelle=50)
         resultat = inserer_ou_mettre_a_jour_dossier(mock_connexion, "C:\\test", 60)
         self.assertIsNone(resultat)
 
-    @patch.dict(os.environ, {"MODIFICATION_TAILLE_IMPORTANTE": "100"})
+    @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
     def test_dossier_existant_grosse_modif_retourne_dict(self):
         """Une modification au-dessus du seuil doit retourner un dictionnaire."""
         mock_connexion, _ = self._mock_connexion_dossier_existant(taille_actuelle=50)
@@ -253,7 +255,7 @@ class TestInsererOuMettreAJourDossier(unittest.TestCase):
         self.assertEqual(resultat["chemin"], "C:\\test")
         self.assertEqual(resultat["difference"], 150)  # 200 - 50
 
-    @patch.dict(os.environ, {"MODIFICATION_TAILLE_IMPORTANTE": "100"})
+    @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
     def test_dossier_existant_reduction_taille(self):
         """Une réduction de taille au-dessus du seuil doit aussi être détectée."""
         mock_connexion, _ = self._mock_connexion_dossier_existant(taille_actuelle=300)
@@ -261,14 +263,14 @@ class TestInsererOuMettreAJourDossier(unittest.TestCase):
         self.assertIsNotNone(resultat)
         self.assertEqual(resultat["difference"], -200)  # 100 - 300
 
-    @patch.dict(os.environ, {"MODIFICATION_TAILLE_IMPORTANTE": "100"})
+    @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
     def test_fait_un_commit(self):
         """Doit faire un commit après l'opération."""
         mock_connexion, _ = self._mock_connexion_nouveau_dossier()
         inserer_ou_mettre_a_jour_dossier(mock_connexion, "C:\\test", 50)
         mock_connexion.commit.assert_called()
 
-    @patch.dict(os.environ, {"MODIFICATION_TAILLE_IMPORTANTE": "100"})
+    @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
     @patch("db.envoyer_notif_teams")
     def test_erreur_sql_envoie_notification(self, mock_notif):
         """Doit envoyer une notification Teams en cas d'erreur SQL."""
@@ -277,6 +279,104 @@ class TestInsererOuMettreAJourDossier(unittest.TestCase):
         inserer_ou_mettre_a_jour_dossier(mock_connexion, "C:\\test", 50)
         mock_notif.assert_called_once()
         self.assertIn("Erreur lors de l'insertion", mock_notif.call_args[0][0])
+
+
+class TestParserSeuilsPersonnalises(unittest.TestCase):
+    """Tests pour la fonction parser_seuils_personnalises."""
+
+    @patch.dict(os.environ, {"SEUILS_PERSONNALISES": ""})
+    def test_chaine_vide_retourne_dict_vide(self):
+        """Une chaîne vide doit retourner un dictionnaire vide."""
+        resultat = parser_seuils_personnalises()
+        self.assertEqual(resultat, {})
+
+    @patch.dict(os.environ, {}, clear=False)
+    def test_variable_absente_retourne_dict_vide(self):
+        """Si la variable n'est pas définie, doit retourner un dictionnaire vide."""
+        os.environ.pop("SEUILS_PERSONNALISES", None)
+        resultat = parser_seuils_personnalises()
+        self.assertEqual(resultat, {})
+
+    @patch.dict(os.environ, {"SEUILS_PERSONNALISES": "D:\\Projets=50"})
+    def test_un_seul_seuil(self):
+        """Un seul seuil doit être correctement parsé."""
+        resultat = parser_seuils_personnalises()
+        self.assertEqual(len(resultat), 1)
+        chemin_normalise = os.path.normpath("D:\\Projets")
+        self.assertIn(chemin_normalise, resultat)
+        self.assertEqual(resultat[chemin_normalise], 50)
+
+    @patch.dict(os.environ, {"SEUILS_PERSONNALISES": "D:\\Projets=50;D:\\Archives=500"})
+    def test_plusieurs_seuils(self):
+        """Plusieurs seuils séparés par ; doivent être correctement parsés."""
+        resultat = parser_seuils_personnalises()
+        self.assertEqual(len(resultat), 2)
+        self.assertEqual(resultat[os.path.normpath("D:\\Projets")], 50)
+        self.assertEqual(resultat[os.path.normpath("D:\\Archives")], 500)
+
+    @patch.dict(os.environ, {"SEUILS_PERSONNALISES": "D:\\Projets=abc;D:\\Archives=500"})
+    def test_seuil_non_numerique_est_ignore(self):
+        """Un seuil non numérique doit être ignoré sans erreur."""
+        resultat = parser_seuils_personnalises()
+        self.assertEqual(len(resultat), 1)
+        self.assertEqual(resultat[os.path.normpath("D:\\Archives")], 500)
+
+    @patch.dict(os.environ, {"SEUILS_PERSONNALISES": "pasdegal;=100;D:\\Ok=200"})
+    def test_entrees_malformees_sont_ignorees(self):
+        """Les entrées sans = ou avec chemin vide doivent être ignorées."""
+        resultat = parser_seuils_personnalises()
+        self.assertEqual(len(resultat), 1)
+        self.assertEqual(resultat[os.path.normpath("D:\\Ok")], 200)
+
+
+class TestObtenirSeuilPourChemin(unittest.TestCase):
+    """Tests pour la fonction obtenir_seuil_pour_chemin."""
+
+    def test_aucun_match_retourne_defaut(self):
+        """Si aucun préfixe ne correspond, doit retourner le seuil par défaut."""
+        seuils = {os.path.normpath("D:\\Projets"): 50}
+        resultat = obtenir_seuil_pour_chemin("C:\\Autre", seuils, 100)
+        self.assertEqual(resultat, 100)
+
+    def test_dict_vide_retourne_defaut(self):
+        """Avec un dictionnaire vide, doit retourner le seuil par défaut."""
+        resultat = obtenir_seuil_pour_chemin("D:\\Projets\\Test", {}, 100)
+        self.assertEqual(resultat, 100)
+
+    def test_match_exact(self):
+        """Un match exact doit retourner le seuil correspondant."""
+        seuils = {os.path.normpath("D:\\Projets"): 50}
+        resultat = obtenir_seuil_pour_chemin(
+            os.path.normpath("D:\\Projets"), seuils, 100
+        )
+        self.assertEqual(resultat, 50)
+
+    def test_match_par_prefixe(self):
+        """Un sous-dossier doit matcher le seuil de son parent."""
+        seuils = {os.path.normpath("D:\\Projets"): 50}
+        resultat = obtenir_seuil_pour_chemin(
+            os.path.normpath("D:\\Projets\\MonProjet\\src"), seuils, 100
+        )
+        self.assertEqual(resultat, 50)
+
+    def test_prefixe_le_plus_specifique_gagne(self):
+        """Le préfixe le plus long (le plus spécifique) doit gagner."""
+        seuils = {
+            os.path.normpath("D:\\Projets"): 50,
+            os.path.normpath("D:\\Projets\\Client"): 10,
+        }
+        resultat = obtenir_seuil_pour_chemin(
+            os.path.normpath("D:\\Projets\\Client\\Fichiers"), seuils, 100
+        )
+        self.assertEqual(resultat, 10)
+
+    def test_prefixe_partiel_ne_matche_pas(self):
+        """Un préfixe partiel de nom de dossier ne doit pas matcher."""
+        seuils = {os.path.normpath("D:\\Pro"): 50}
+        resultat = obtenir_seuil_pour_chemin(
+            os.path.normpath("D:\\Projets\\Test"), seuils, 100
+        )
+        self.assertEqual(resultat, 100)
 
 
 if __name__ == "__main__":
