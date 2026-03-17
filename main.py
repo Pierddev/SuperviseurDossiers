@@ -36,6 +36,7 @@ from db import (
 )
 from notifications import envoyer_notif_teams
 from scanner import scanner
+from plugin_loader import charger_plugins
 
 
 if __name__ == "__main__":
@@ -46,6 +47,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Lance un scan immédiatement et quitte",
     )
+    parser.add_argument(
+        "--run-plugin",
+        type=str,
+        help="Lance un plugin spécifique immédiatement et quitte (ex: --run-plugin verif_auteur)",
+        metavar="NOM_PLUGIN",
+    )
     args = parser.parse_args()
 
     if args.scan_now:
@@ -55,6 +62,28 @@ if __name__ == "__main__":
         print("=" * 60)
         scanner()
         print("✅ Scan terminé.")
+    elif args.run_plugin:
+        # Mode exécution de plugin manuel
+        print("=" * 60)
+        print(f"🔌 Exécution manuelle du plugin : {args.run_plugin}")
+        print("=" * 60)
+        plugins = charger_plugins(DOSSIER_APP)
+        plugin_trouve = False
+        for plugin in plugins:
+            if plugin.__name__ == args.run_plugin:
+                plugin_trouve = True
+                if hasattr(plugin, "executer"):
+                    plugin.executer()
+                else:
+                    print(f"❌ Le plugin '{args.run_plugin}' ne possède pas de fonction 'executer()'.")
+                break
+        
+        if not plugin_trouve:
+            print(f"❌ Plugin introuvable : {args.run_plugin}")
+            print("Plugins disponibles :")
+            for p in plugins:
+                print(f" - {p.__name__}")
+        print("✅ Terminé.")
     else:
         # Mode planifié (comportement par défaut)
         heure_scan = os.getenv("HEURE_SCAN", "17:30")
@@ -86,6 +115,16 @@ if __name__ == "__main__":
             for chemin_seuil, valeur_seuil in seuils.items():
                 print(f"   - {chemin_seuil} : {valeur_seuil} Mo")
 
+        # Charge et planifie les plugins
+        print("🔌 Chargement des plugins...")
+        plugins = charger_plugins(DOSSIER_APP)
+        if plugins:
+            print(f"✅ {len(plugins)} plugin(s) chargé(s) :")
+            for plugin in plugins:
+                plugin.afficher_statut()
+                plugin.planifier(schedule)
+        else:
+            print("ℹ️ Aucun plugin chargé.")
         print("-" * 60)
 
         # Vérifie la connexion à la base de données au démarrage
