@@ -29,7 +29,11 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
-from db import connecter_base_de_donnees, deconnecter_base_de_donnees
+from db import (
+    connecter_base_de_donnees,
+    deconnecter_base_de_donnees,
+    parser_seuils_personnalises,
+)
 from notifications import envoyer_notif_teams
 from scanner import scanner
 
@@ -72,6 +76,16 @@ if __name__ == "__main__":
             print(f"🚫 Chemins exclus : {', '.join(chemins_exclus)}")
         else:
             print("🚫 Aucun chemin exclu")
+
+        # Affiche les seuils personnalisés
+        seuil_defaut = os.getenv("SEUIL_DEFAUT", "100")
+        print(f"📏 Seuil de notification par défaut : {seuil_defaut} Mo")
+        seuils = parser_seuils_personnalises()
+        if seuils:
+            print("📏 Seuils personnalisés :")
+            for chemin_seuil, valeur_seuil in seuils.items():
+                print(f"   - {chemin_seuil} : {valeur_seuil} Mo")
+
         print("-" * 60)
 
         # Vérifie la connexion à la base de données au démarrage

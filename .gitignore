@@ -6,3 +6,4 @@ SuperviseurDossiers.spec
 exe_generator.bat
 /__pycache__
 /tests/__pycache__
+superviseur.log
