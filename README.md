@@ -10,6 +10,7 @@ Script Python déployé sur **Windows Server** qui analyse automatiquement la ta
     - [Schéma SQL](#schéma-sql)
 - [Configuration](#-configuration)
 - [Installation](#-installation)
+- [Système de Plugins](#-système-de-plugins)
 - [Déploiement sur Windows Server](#-déploiement-sur-windows-server)
 - [Structure du projet](#-structure-du-projet)
 - [Technologies](#-technologies)
@@ -24,7 +25,8 @@ Script Python déployé sur **Windows Server** qui analyse automatiquement la ta
 - **Notifications Teams** — Envoie un résumé après chaque scan via webhook Microsoft Teams
 - **Logging** — Enregistre les erreurs dans un fichier `superviseur.log`
 - **Planification** — Scan quotidien automatique à une heure configurable
-- **Scan manuel** — Possibilité de lancer un scan immédiat via `.\SuperviseurDossiers.exe --scan-now`
+- **Extensibilité** — Système de plugins permettant de brancher des scripts externes (dossier `plugins/`) sans altérer le cœur
+- **Scan manuel** — Lancer le scan global via `.\SuperviseurDossiers.exe --scan-now` ou un plugin précis via `--run-plugin [Nom du plugin]`
 
 ## 📋 Prérequis
 
@@ -192,13 +194,32 @@ python main.py
 python main.py --scan-now
 ```
 
+## 🧩 Système de Plugins
+
+L'application intègre un **mécanisme de plugins** qui charge dynamiquement tout script Python placé dans le sous-dossier `plugins/` situé au même niveau que le script principal ou `.exe`.
+
+> 💡 **Pourquoi des plugins ?** Ils permettent d'ajouter des fonctionnalités spécifiques et personnalisées (comme la détection d'auteurs ou d'anomalies métiers) sans salir ou alourdir le repo public principal. Le dossier `plugins/` est d'ailleurs ignoré par Git (`.gitignore`).
+
+### Comment créer un plugin ?
+1. Créer un fichier `mon_plugin.py` dans le dossier `plugins/`.
+2. Ce fichier **doit obligatoirement** définir ces 3 méthodes pour être détecté :
+   - `def configurer(dossier_app: str) -> None:` (ex: charger un `.env` propre au plugin)
+   - `def planifier(scheduler) -> None:` (ex: `scheduler.every().day.at("08:00").do(executer)`)
+   - `def afficher_statut() -> None:` (affichage stdout au démarrage de l'app)
+
+### Lancer un plugin manuellement
+Il est possible de déclencher instantanément la méthode `executer()` d'un plugin sans attendre sa planification :
+```bash
+python main.py --run-plugin mon_plugin
+```
+
 ## 📦 Déploiement sur Windows Server
 
 ### 1. Générer l'exécutable
 
 ```bash
 pip install pyinstaller
-pyinstaller --onefile --name SuperviseurDossiers --icon=icone.ico main.py
+pyinstaller --onefile --name SuperviseurDossiers --icon=icone.ico --hidden-import openpyxl main.py
 ```
 
 Le fichier `dist/SuperviseurDossiers.exe` est créé.
