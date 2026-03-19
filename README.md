@@ -258,23 +258,23 @@ schtasks /create /tn "SuperviseurDossiers" /tr "C:\votre_chemin\SuperviseurDossi
 | `/rl HIGHEST` | Privilèges élevés                |
 
 ## 📬 Exemple de notification Teams
-
-✅ **Scan terminé avec succès**
-<br>📅 19/03/2026 à 17:30 ⏱️ Durée du scan : 15s
-<br>📊 **Résumé** : 3 changements détectés (Total +400 Mo)
-
-<br>🆕 **Nouveaux dossiers**:
-
-```
-⚠️ (+    450 Mo)   C: > Projets > NouveauProjet
-```
-
-<br>📝 **Dossiers modifiés**:
-
-```
-➖ (+    150 Mo)   C: > Users > Administrateur > Documents
-➖ (-    200 Mo)   C: > Backup > Archives
-```
+>
+>✅ **Scan terminé avec succès**
+><br>📅 19/03/2026 à 17:30 ⏱️ Durée du scan : 15s
+><br>📊 **Résumé** : 3 changements détectés (Total +400 Mo)
+>
+><br>🆕 **Nouveaux dossiers**:
+>
+>```
+>⚠️ (+    450 Mo)   C: > Projets > NouveauProjet
+>```
+>
+><br>📝 **Dossiers modifiés**:
+>
+>```
+>➖ (+    150 Mo)   C: > Users > Administrateur > Documents
+>➖ (-    200 Mo)   C: > Backup > Archives
+>```
 
 ## 📂 Structure du projet
 
