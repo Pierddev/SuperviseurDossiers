@@ -3,7 +3,6 @@
 /build
 /dist
 SuperviseurDossiers.spec
-exe_generator.bat
 /__pycache__
 /tests/__pycache__
 superviseur.log
@@ -11,3 +10,5 @@ superviseur.log
 # Custom plugins (not versioned)
 plugins/
 !plugins/.gitkeep
+*.bat
+test_notifications.py
