@@ -22,7 +22,9 @@ Script Python déployé sur **Windows Server** qui analyse automatiquement la ta
 - **Stockage en BDD** — Enregistre la taille de chaque dossier en Mo avec historique léger (taille actuelle + taille du dernier scan)
 - **Détection des changements** — Identifie les nouveaux dossiers et les variations de taille significatives (seuil configurable)
 - **Seuils par répertoire** — Possibilité de définir un seuil de notification différent par répertoire (avec matching par préfixe)
-- **Notifications Teams** — Envoie un résumé après chaque scan via webhook Microsoft Teams
+- **Notifications Teams** — Envoie un résumé enrichi après chaque scan via webhook Microsoft Teams
+- **Variation totale** — Affiche le changement de taille cumulé sur l'ensemble des chemins racines scannés
+- **Mise en évidence** — Utilise des marqueurs visuels (`⚠️`) pour les changements particulièrement lourds (> 5x le seuil)
 - **Logging** — Enregistre les erreurs dans un fichier `superviseur.log`
 - **Planification** — Scan quotidien automatique à une heure configurable
 - **Extensibilité** — Système de plugins permettant de brancher des scripts externes (dossier `plugins/`) sans altérer le cœur
@@ -201,14 +203,17 @@ L'application intègre un **mécanisme de plugins** qui charge dynamiquement tou
 > 💡 **Pourquoi des plugins ?** Ils permettent d'ajouter des fonctionnalités spécifiques et personnalisées (comme la détection d'auteurs ou d'anomalies métiers) sans salir ou alourdir le repo public principal. Le dossier `plugins/` est d'ailleurs ignoré par Git (`.gitignore`).
 
 ### Comment créer un plugin ?
+
 1. Créer un fichier `mon_plugin.py` dans le dossier `plugins/`.
 2. Ce fichier **doit obligatoirement** définir ces 3 méthodes pour être détecté :
-   - `def configurer(dossier_app: str) -> None:` (ex: charger un `.env` propre au plugin)
-   - `def planifier(scheduler) -> None:` (ex: `scheduler.every().day.at("08:00").do(executer)`)
-   - `def afficher_statut() -> None:` (affichage stdout au démarrage de l'app)
+    - `def configurer(dossier_app: str) -> None:` (ex: charger un `.env` propre au plugin)
+    - `def planifier(scheduler) -> None:` (ex: `scheduler.every().day.at("08:00").do(executer)`)
+    - `def afficher_statut() -> None:` (affichage stdout au démarrage de l'app)
 
 ### Lancer un plugin manuellement
+
 Il est possible de déclencher instantanément la méthode `executer()` d'un plugin sans attendre sa planification :
+
 ```bash
 python main.py --run-plugin mon_plugin
 ```
@@ -254,20 +259,21 @@ schtasks /create /tn "SuperviseurDossiers" /tr "C:\votre_chemin\SuperviseurDossi
 
 ## 📬 Exemple de notification Teams
 
+✅ **Scan terminé avec succès**
+<br>📅 19/03/2026 à 17:30 ⏱️ Durée du scan : 15s
+<br>📊 **Résumé** : 3 changements détectés (Total +400 Mo)
+
+<br>🆕 **Nouveaux dossiers**:
+
 ```
-Scan du 18/02/2026 à 17:30
+⚠️ (+    450 Mo)   C: > Projets > NouveauProjet
+```
 
-Nouveaux dossiers :
-- C:\Projets\NouveauProjet (+250.45 Mo)
+<br>📝 **Dossiers modifiés**:
 
-Dossiers modifiés :
-- C:\Users\Documents (+150.30 Mo)
-- C:\Backup\Archives (-200.00 Mo)
-
-Variation totale : +200.75 Mo
-
-Scan terminé avec succès
-⏱️ Durée du scan : 10s
+```
+➖ (+    150 Mo)   C: > Users > Administrateur > Documents
+➖ (-    200 Mo)   C: > Backup > Archives
 ```
 
 ## 📂 Structure du projet

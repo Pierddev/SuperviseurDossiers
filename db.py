@@ -228,16 +228,20 @@ def inserer_ou_mettre_a_jour_dossier(
 def traiter_dossiers_en_lot(
     connexion_mysql: mysql.connector.MySQLConnection,
     dossiers_avec_tailles: dict[str, int],
-) -> tuple[list, list, int]:
+    chemin_racine: str = None,
+) -> tuple[list, list, int, int]:
     """
     Traite tous les dossiers en lot pour optimiser les accès BDD.
     Charge tous les dossiers existants en mémoire (1 seul SELECT),
     puis fait les INSERT/UPDATE avec un commit tous les 5000 dossiers.
-    Retourne (nouveaux_dossiers, dossiers_modifies, taille_totale_scan).
+    Retourne (nouveaux_dossiers, dossiers_modifies, taille_totale_scan, changement_racine).
     """
     seuil_defaut = int(os.getenv("SEUIL_DEFAUT"))
     seuils_personnalises = parser_seuils_personnalises()
     curseur = connexion_mysql.cursor()
+
+    # Normalisation du chemin racine pour comparaison
+    chemin_racine_norm = os.path.normpath(chemin_racine) if chemin_racine else None
 
     # Charge TOUS les dossiers existants en mémoire (1 seule requête)
     curseur.execute(
@@ -253,17 +257,23 @@ def traiter_dossiers_en_lot(
     nouveaux_dossiers = []
     dossiers_modifies = []
     taille_totale_scan = 0
+    changement_racine = 0
     compteur = 0
 
     for chemin, taille_octets in dossiers_avec_tailles.items():
         taille_en_mo = round(taille_octets / (1024**2))
         taille_totale_scan += taille_en_mo
+        chemin_norm = os.path.normpath(chemin)
 
         if chemin in dossiers_existants:
             # Dossier existant → UPDATE
             info = dossiers_existants[chemin]
             id_dossier = info["id"]
             taille_precedente = info["taille"] or 0
+            diff_mo = taille_en_mo - int(taille_precedente)
+
+            if chemin_racine_norm and chemin_norm == chemin_racine_norm:
+                changement_racine = diff_mo
 
             if info["est_nouveau"] == 1:
                 curseur.execute(
@@ -278,13 +288,12 @@ def traiter_dossiers_en_lot(
             )
 
             seuil = obtenir_seuil_pour_chemin(chemin, seuils_personnalises, seuil_defaut)
-            difference = abs(int(taille_precedente) - taille_en_mo)
-            if difference > seuil:
+            if abs(diff_mo) > seuil:
                 dossiers_modifies.append(
                     {
                         "type": "modification",
                         "chemin": chemin,
-                        "difference": taille_en_mo - int(taille_precedente),
+                        "difference": diff_mo,
                     }
                 )
         else:
@@ -298,6 +307,9 @@ def traiter_dossiers_en_lot(
                 "INSERT INTO sudo_tailles (id_dossier, taille_actuel_scan) VALUES (%s, %s)",
                 (id_dossier, taille_en_mo),
             )
+
+            if chemin_racine_norm and chemin_norm == chemin_racine_norm:
+                changement_racine = taille_en_mo
 
             seuil = obtenir_seuil_pour_chemin(chemin, seuils_personnalises, seuil_defaut)
             if taille_en_mo > seuil:
@@ -315,4 +327,4 @@ def traiter_dossiers_en_lot(
 
     connexion_mysql.commit()
     curseur.close()
-    return nouveaux_dossiers, dossiers_modifies, taille_totale_scan
+    return nouveaux_dossiers, dossiers_modifies, taille_totale_scan, changement_racine

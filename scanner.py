@@ -41,25 +41,33 @@ def scanner() -> None:
         nouveaux_dossiers = []
         dossiers_modifies = []
         taille_totale_scan = 0
+        total_changement_taille = 0
 
         for chemin_racine in chemins_racines:
             chemin_racine = chemin_racine.strip()
             if not chemin_racine:
                 continue
             dossiers_avec_tailles = scanner_arborescence(chemin_racine, chemins_exclus)
-            nouveaux, modifies, taille_scan = traiter_dossiers_en_lot(
-                connexion_mysql, dossiers_avec_tailles
+            (
+                nouveaux,
+                modifies,
+                taille_scan,
+                changement_racine,
+            ) = traiter_dossiers_en_lot(
+                connexion_mysql, dossiers_avec_tailles, chemin_racine
             )
             nouveaux_dossiers.extend(nouveaux)
             dossiers_modifies.extend(modifies)
             taille_totale_scan += taille_scan
+            total_changement_taille += changement_racine
 
         # Filtre les dossiers parents redondants pour la notification
         nouveaux_dossiers = filtrer_dossiers_redondants(nouveaux_dossiers)
         dossiers_modifies = filtrer_dossiers_redondants(dossiers_modifies)
 
         # Construction du message pour la notification Teams
-        message = "✅ Scan terminé avec succès"
+        signe = "+" if total_changement_taille > 0 else ""
+        message = "✅ **Scan terminé avec succès**"
 
         # Calcul de la durée du scan
         duree_scan = time.time() - debut_scan
@@ -73,20 +81,34 @@ def scanner() -> None:
         else:
             duree_formatee = f"{secondes}s"
 
-        message += f"\n<br>📅 {datetime.now().strftime('%d/%m/%Y à %H:%M')} | ⏱️ Durée du scan : {duree_formatee}\n"
+        message += f"\n<br>📅 {datetime.now().strftime('%d/%m/%Y à %H:%M')} ⏱️ Durée du scan : {duree_formatee}"
+        message += f"\n<br>📊 **Résumé** : {len(nouveaux_dossiers) + len(dossiers_modifies)} changements détectés (Total {signe}{total_changement_taille} Mo) \n"
+
+        # Seuil pour la mise en évidence par poids (5 * SEUIL_DEFAUT)
+        seuil_poids = int(os.getenv("SEUIL_DEFAUT", 100)) * 5
 
         if len(nouveaux_dossiers) > 0:
-            message += "\n<br>Nouveaux dossiers:\n"
+            message += "\n<br>🆕 **Nouveaux dossiers**:\n```"
             for dossier in nouveaux_dossiers:
-                message += f"- {dossier['chemin']} (+{dossier['taille']} Mo)\n"
+                marqueur = "⚠️ " if dossier["taille"] > seuil_poids else "➖ "
+                dossier["chemin"] = dossier["chemin"].replace("\\", " > ")
+                message += (
+                    f"\n{marqueur}(+ {dossier['taille']:>6} Mo)   {dossier['chemin']}"
+                )
+            message += "\n```"
 
         if len(dossiers_modifies) > 0:
-            message += "\n<br>Dossiers modifiés:\n"
+            message += "\n<br>📝 **Dossiers modifiés**:\n```"
             for dossier in dossiers_modifies:
-                signe = "+" if dossier["difference"] > 0 else ""
+                diff = dossier["difference"]
+                signe_mod = "+" if diff > 0 else "-"
+                abs_diff = abs(diff)
+                marqueur = "⚠️ " if abs_diff > seuil_poids else "➖ "
+                dossier["chemin"] = dossier["chemin"].replace("\\", " > ")
                 message += (
-                    f"- {dossier['chemin']} ({signe}{dossier['difference']} Mo)\n"
+                    f"\n{marqueur}({signe_mod} {abs_diff:>6} Mo)   {dossier['chemin']}"
                 )
+            message += "\n```"
 
         if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0:
             message += "\n\nAucun dossier modifié ou nouveau"

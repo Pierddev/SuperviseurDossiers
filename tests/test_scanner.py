@@ -39,7 +39,7 @@ class TestScanner(unittest.TestCase):
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
         mock_scanner_arbo.return_value = {"C:\\test": 0}
-        mock_traiter.return_value = ([], [], 0)
+        mock_traiter.return_value = ([], [], 0, 0)
 
         scanner()
 
@@ -73,7 +73,7 @@ class TestScanner(unittest.TestCase):
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
         mock_scanner_arbo.return_value = {}
-        mock_traiter.return_value = ([], [], 0)
+        mock_traiter.return_value = ([], [], 0, 0)
 
         scanner()
 
@@ -107,13 +107,14 @@ class TestScanner(unittest.TestCase):
             [{"type": "nouveau", "chemin": "C:\\nouveau", "taille": 200}],
             [],
             200,
+            200,
         )
 
         scanner()
 
         message = mock_notif.call_args[0][0]
         self.assertIn("Nouveaux dossiers", message)
-        self.assertIn("C:\\nouveau", message)
+        self.assertIn("C: > nouveau", message)
 
     @patch.dict(os.environ, {"CHEMINS_RACINES": "C:\\test", "CHEMINS_EXCLUS": ""})
     @patch("scanner.deconnecter_base_de_donnees")
@@ -141,13 +142,14 @@ class TestScanner(unittest.TestCase):
             [],
             [{"type": "modification", "chemin": "C:\\modifie", "difference": 150}],
             0,
+            150,
         )
 
         scanner()
 
         message = mock_notif.call_args[0][0]
         self.assertIn("Dossiers modifiés", message)
-        self.assertIn("C:\\modifie", message)
+        self.assertIn("C: > modifie", message)
         self.assertIn("+150", message)
 
     @patch.dict(os.environ, {"CHEMINS_RACINES": "C:\\test", "CHEMINS_EXCLUS": ""})
@@ -172,7 +174,7 @@ class TestScanner(unittest.TestCase):
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
         mock_scanner_arbo.return_value = {"C:\\stable": 0}
-        mock_traiter.return_value = ([], [], 0)
+        mock_traiter.return_value = ([], [], 0, 0)
 
         scanner()
 
@@ -201,7 +203,7 @@ class TestScanner(unittest.TestCase):
         mock_connect.return_value = MagicMock()
         mock_creer.return_value = 1
         mock_scanner_arbo.return_value = {}
-        mock_traiter.return_value = ([], [], 0)
+        mock_traiter.return_value = ([], [], 0, 0)
 
         scanner()
 
@@ -234,6 +236,7 @@ class TestScanner(unittest.TestCase):
             [],
             [{"type": "modification", "chemin": "C:\\reduit", "difference": -200}],
             0,
+            -200,
         )
 
         scanner()
