@@ -29,6 +29,8 @@ Script Python déployé sur **Windows Server** qui analyse automatiquement la ta
 - **Planification** — Scan quotidien automatique à une heure configurable
 - **Extensibilité** — Système de plugins permettant de brancher des scripts externes (dossier `plugins/`) sans altérer le cœur
 - **Scan manuel** — Lancer le scan global via `.\SuperviseurDossiers.exe --scan-now` ou un plugin précis via `--run-plugin [Nom du plugin]`
+- **Notification de démarrage enrichie** — Lors du démarrage, une notification Teams indique l'état de la BDD, des chemins racines **et des plugins chargés**
+- **Retry automatique des plugins** — Si un plugin échoue à se charger au démarrage (ex: partage réseau momentanément inaccessible), le script réessaie automatiquement jusqu'à 5 fois à 60 secondes d'intervalle
 
 ## 📋 Prérequis
 
@@ -231,31 +233,47 @@ Le fichier `dist/SuperviseurDossiers.exe` est créé.
 
 ### 2. Copier les fichiers sur le serveur
 
-Placer ces 2 fichiers dans un dossier sur le serveur (ex: `C:\SuperviseurDossiers\`) :
+Placer ces fichiers dans un dossier sur le serveur (ex: `C:\SuperviseurDossiers\`) :
 
 ```
 C:\SuperviseurDossiers\
 ├── SuperviseurDossiers.exe    # L'exécutable
-└── .env                       # Configuration adaptée au serveur
+├── .env                       # Configuration adaptée au serveur
+└── plugins\                   # Dossier des plugins (optionnel)
+    ├── mon_plugin.py
+    └── mon_plugin.env
 ```
 
 > ⚠️ Le fichier `.env` doit être adapté avec les paramètres du serveur (BDD, webhook, chemin racine à analyser).
 
+> 💡 Le dossier `plugins/` est créé automatiquement s'il est absent. Les fichiers `.py` qu'il contient sont chargés dynamiquement au démarrage.
+
 ### 3. Démarrage automatique au boot
 
-Créer une tâche planifiée (en **administrateur**) :
+> ⚠️ **Important — Compte d'exécution et accès réseau**
+>
+> Le script doit impérativement **accéder aux partages réseau** (`\\serveur\dossier`) pour scanner et pour que les plugins fonctionnent correctement. Or, le compte **SYSTEM** n'a pas d'identité réseau et ne peut donc **pas accéder aux chemins UNC** (`\\serveur\...`).
+>
+> Il faut obligatoirement utiliser un **compte de domaine** ayant les droits en lecture sur les partages ciblés.
+
+Créer une tâche planifiée (en **administrateur**) avec un compte de domaine :
 
 ```cmd
-schtasks /create /tn "SuperviseurDossiers" /tr "C:\votre_chemin\SuperviseurDossiers\SuperviseurDossiers.exe" /sc onstart /ru SYSTEM /rl HIGHEST
+schtasks /create /tn "SuperviseurDossiers" /tr "C:\votre_chemin\SuperviseurDossiers\SuperviseurDossiers.exe" /sc onstart /ru DOMAINE\compte-service /rp MotDePasse /rl HIGHEST
 ```
 
-| Paramètre     | Signification                    |
-| ------------- | -------------------------------- |
-| `/tn`         | Nom de la tâche                  |
-| `/tr`         | Chemin vers le .exe              |
-| `/sc onstart` | Se lance au démarrage du serveur |
-| `/ru SYSTEM`  | Tourne sous le compte SYSTEM     |
-| `/rl HIGHEST` | Privilèges élevés                |
+| Paramètre            | Signification                                          |
+| -------------------- | ------------------------------------------------------ |
+| `/tn`                | Nom de la tâche                                        |
+| `/tr`                | Chemin vers le .exe                                    |
+| `/sc onstart`        | Se lance au démarrage du serveur                       |
+| `/ru DOMAINE\compte` | Compte de domaine avec accès aux partages réseau       |
+| `/rp`                | Mot de passe du compte (nécessaire pour l'accès réseau)|
+| `/rl HIGHEST`        | Privilèges élevés                                      |
+
+Il est également recommandé d'ajouter un **délai de démarrage** de 2 à 3 minutes via le Planificateur de tâches (interface graphique → Propriétés de la tâche → Déclencheur → Clic sur le déclencheur → Modifier → Reporter la tâche pendant → 3 minutes), afin de laisser le temps au réseau d'être entièrement initialisé avant le premier accès aux partages.
+
+> 💡 **Sans accès réseau**, les chemins UNC dans `CHEMINS_RACINES` seront ignorés (scan vide ou partiel) et les plugins ciblant un partage réseau échoueront à leur initialisation. La notification Teams de démarrage indique désormais clairement l'état de chaque plugin pour faciliter le diagnostic.
 
 ## 📬 Exemple de notification Teams
 >
@@ -280,16 +298,20 @@ schtasks /create /tn "SuperviseurDossiers" /tr "C:\votre_chemin\SuperviseurDossi
 
 ```
 SuperviseurDossiers/
-├── main.py              # Point d'entrée (config, schedule, argparse)
+├── main.py              # Point d'entrée (config, schedule, argparse, retry plugins)
 ├── scanner.py           # Orchestration du scan
 ├── db.py                # Fonctions base de données MySQL
 ├── notifications.py     # Envoi de notifications Teams
 ├── fichiers.py          # Gestion du système de fichiers
+├── plugin_loader.py     # Chargement dynamique des plugins
 ├── icone.ico            # Icône de l'exécutable
 ├── requirements.txt     # Dépendances Python
 ├── .env                 # Configuration (non versionné)
 ├── .gitignore
 ├── superviseur.log      # Fichier de logs (généré automatiquement)
+├── plugins/             # Dossier des plugins (non versionné, ignoré par Git)
+│   ├── mon_plugin.py
+│   └── mon_plugin.env
 └── tests/               # Tests unitaires
 ```
 
