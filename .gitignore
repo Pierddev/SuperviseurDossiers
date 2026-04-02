@@ -12,3 +12,4 @@ plugins/
 !plugins/.gitkeep
 *.bat
 test_notifications.py
+design/

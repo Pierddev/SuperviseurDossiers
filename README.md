@@ -1,13 +1,12 @@
 # 📁 Superviseur de Dossiers
 
-Script Python déployé sur **Windows Server** qui analyse automatiquement la taille de tous les dossiers d'un chemin racine, stocke les résultats dans une base de données **MySQL** et envoie des notifications **Microsoft Teams** en cas de changements importants.
+Script Python déployé sur **Windows Server** qui analyse automatiquement la taille de tous les dossiers d'un chemin racine, stocke les résultats dans une base de données **MariaDB** (historisation complète) et envoie des notifications **Microsoft Teams** en cas de changements importants.
 
 ## 📑 Sommaire
 
 - [Fonctionnalités](#-fonctionnalités)
 - [Prérequis](#-prérequis)
 - [Base de données](#-base-de-données)
-    - [Schéma SQL](#schéma-sql)
 - [Configuration](#-configuration)
 - [Installation](#-installation)
 - [Système de Plugins](#-système-de-plugins)
@@ -19,7 +18,7 @@ Script Python déployé sur **Windows Server** qui analyse automatiquement la ta
 
 - **Scan récursif** — Parcourt tous les dossiers et sous-dossiers à partir d'un chemin racine configurable
 - **Exclusion de chemins** — Permet d'exclure des dossiers du scan (ex: `C:\Windows`)
-- **Stockage en BDD** — Enregistre la taille de chaque dossier en Mo avec historique léger (taille actuelle + taille du dernier scan)
+- **Stockage en BDD** — Enregistre la taille de chaque dossier en Ko avec **historisation complète** (une entrée par scan, conservée indéfiniment)
 - **Détection des changements** — Identifie les nouveaux dossiers et les variations de taille significatives (seuil configurable)
 - **Seuils par répertoire** — Possibilité de définir un seuil de notification différent par répertoire (avec matching par préfixe)
 - **Notifications Teams** — Envoie un résumé enrichi après chaque scan via webhook Microsoft Teams
@@ -35,95 +34,25 @@ Script Python déployé sur **Windows Server** qui analyse automatiquement la ta
 ## 📋 Prérequis
 
 - Python 3.10+
-- MySQL 8.0+
+- MariaDB 10.6+
 - Un webhook Microsoft Teams
 
 ## 🗄️ Base de données
 
-Le script utilise 3 tables :
+L'application utilise **MariaDB** avec 3 tables pour une historisation complète des tailles de dossiers.
 
-| Table           | Rôle                                                                      |
-| --------------- | ------------------------------------------------------------------------- |
-| `sudo_dossiers` | Stocke les chemins des dossiers et leur statut (nouveau ou non)           |
-| `sudo_tailles`  | Stocke la taille actuelle et la taille du dernier scan de chaque dossier  |
-| `sudo_scans`    | Historique des scans avec leur date et statut (en_cours, termine, erreur) |
+| Table     | Rôle                                                              |
+| --------- | ----------------------------------------------------------------- |
+| `folders` | Stocke les chemins des dossiers et leur statut (nouveau ou non)   |
+| `scans`   | Enregistre chaque scan (date + statut)                            |
+| `sizes`   | Lie chaque dossier à chaque scan avec sa taille en Ko             |
 
-### Schéma SQL
+📖 **Documentation complète** : [docs/database.md](docs/database.md)
 
-```sql
-CREATE DATABASE IF NOT EXISTS superviseur_dossiers;
-USE superviseur_dossiers;
-
-CREATE TABLE IF NOT EXISTS sudo_dossiers (
-  id_dossier INT NOT NULL AUTO_INCREMENT,
-  dossier_chemin VARCHAR(300) NOT NULL,
-  dossier_est_nouveau TINYINT NULL,
-  PRIMARY KEY (id_dossier)
-) ENGINE = InnoDB;
-
-CREATE TABLE IF NOT EXISTS sudo_tailles (
-  id_dossier INT NOT NULL,
-  taille_actuel_scan INT NULL,
-  taille_dernier_scan INT NULL,
-  PRIMARY KEY (id_dossier),
-  CONSTRAINT fk_id_dossier
-    FOREIGN KEY (id_dossier)
-    REFERENCES sudo_dossiers (id_dossier)
-) ENGINE = InnoDB;
-
-CREATE TABLE IF NOT EXISTS sudo_scans (
-  id_scan INT NOT NULL AUTO_INCREMENT,
-  scan_date TIMESTAMP NULL,
-  scan_statut ENUM('en_cours', 'termine', 'erreur') NULL,
-  PRIMARY KEY (id_scan)
-) ENGINE = InnoDB;
-
--- Index pour optimiser les recherches par chemin de dossier
-CREATE INDEX idx_dossier_chemin ON sudo_dossiers(dossier_chemin);
-```
-
-### Mise en place
-
-1. **Installer MySQL** sur le serveur si ce n'est pas déjà fait :
-    - Télécharger MySQL Installer depuis [dev.mysql.com/downloads/installer/](https://dev.mysql.com/downloads/installer/)
-    - Installer **MySQL Server** et définir un mot de passe root lors de l'installation
-
-2. Ouvrir une **invite de commandes** (cmd) sur le serveur :
+Pour créer la base de données, exécuter le script fourni :
 
 ```cmd
-mysql -u root -p
-```
-
-> 💡 Si `mysql` n'est pas reconnu, utilisez le chemin complet :
-
-```cmd
-"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -p
-```
-
-3. Copier-coller le **schéma SQL ci-dessus** dans le terminal MySQL
-
-4. Vérifier que les tables sont créées :
-
-```sql
-SHOW TABLES;
-```
-
-Résultat attendu :
-
-```
-+------------------------------------+
-| Tables_in_superviseur_dossiers     |
-+------------------------------------+
-| sudo_dossiers                      |
-| sudo_scans                         |
-| sudo_tailles                       |
-+------------------------------------+
-```
-
-5. Quitter MySQL :
-
-```sql
-EXIT;
+mariadb -u root -p < sql/migration.sql
 ```
 
 ## ⚙️ Configuration
@@ -188,8 +117,8 @@ pip install -r requirements.txt
 cp .env.example .env
 # Éditer .env avec vos paramètres
 
-# Créer les tables dans MySQL
-# Exécuter le schéma SQL ci-dessus dans votre base de données
+# Créer les tables dans MariaDB
+mariadb -u root -p < sql/migration.sql
 
 # Lancer le script (mode planifié)
 python main.py
@@ -300,7 +229,7 @@ Il est également recommandé d'ajouter un **délai de démarrage** de 2 à 3 mi
 SuperviseurDossiers/
 ├── main.py              # Point d'entrée (config, schedule, argparse, retry plugins)
 ├── scanner.py           # Orchestration du scan
-├── db.py                # Fonctions base de données MySQL
+├── db.py                # Fonctions base de données MariaDB
 ├── notifications.py     # Envoi de notifications Teams
 ├── fichiers.py          # Gestion du système de fichiers
 ├── plugin_loader.py     # Chargement dynamique des plugins
@@ -309,6 +238,11 @@ SuperviseurDossiers/
 ├── .env                 # Configuration (non versionné)
 ├── .gitignore
 ├── superviseur.log      # Fichier de logs (généré automatiquement)
+├── sql/
+│   └── migration.sql    # Script de création de la base MariaDB
+├── docs/                # Documentation détaillée
+│   └── database.md      # Schéma BDD et guide d'installation
+├── design/              # Maquettes Figma (non versionné)
 ├── plugins/             # Dossier des plugins (non versionné, ignoré par Git)
 │   ├── mon_plugin.py
 │   └── mon_plugin.env
@@ -318,7 +252,7 @@ SuperviseurDossiers/
 ## 🛠️ Technologies
 
 - **Python** — Langage principal
-- **MySQL** — Base de données
+- **MariaDB** — Base de données (historisation complète)
 - **Microsoft Teams** — Notifications via webhook
 - **os.walk()** — Parcours récursif des dossiers
 - **python-dotenv** — Gestion des variables d'environnement
