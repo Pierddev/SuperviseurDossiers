@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SuperviseurDossiers - Interface d'administration">
+    <title>{% block title %}SuperviseurDossiers{% endblock %}</title>
+
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            200: '#c7d2fe',
+                            300: '#a5b4fc',
+                            400: '#818cf8',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            800: '#3730a3',
+                            900: '#312e81',
+                            950: '#1e1b4b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Scrollbar personnalisée */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e1b4b; }
+        ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6366f1; }
+
+        /* Animation de la sidebar */
+        .sidebar-link {
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-link:hover,
+        .sidebar-link.active {
+            background: rgba(79, 70, 229, 0.15);
+            border-left-color: #4f46e5;
+        }
+    </style>
+
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+    <div class="flex min-h-screen">
+
+        <!-- Sidebar -->
+        <aside class="w-64 bg-gray-900 border-r border-gray-800 flex flex-col flex-shrink-0">
+            <!-- Logo -->
+            <div class="p-5 border-b border-gray-800">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 bg-primary-600 rounded-lg flex items-center justify-center">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-sm font-semibold text-white">SuperviseurDossiers</h1>
+                        <p class="text-xs text-gray-500">Administration</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="flex-1 py-4 px-3 space-y-1">
+                <a href="{{ url_for('dashboard') }}" id="nav-dashboard"
+                   class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white
+                          {% if request.endpoint == 'dashboard' %}active text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                    </svg>
+                    Tableau de bord
+                </a>
+
+                <a href="{{ url_for('history') }}" id="nav-history"
+                   class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white
+                          {% if request.endpoint == 'history' %}active text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                    </svg>
+                    Historique des dossiers
+                </a>
+
+                <a href="{{ url_for('settings') }}" id="nav-settings"
+                   class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white
+                          {% if request.endpoint == 'settings' %}active text-white{% endif %}">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    Configuration
+                </a>
+            </nav>
+
+            <!-- Déconnexion -->
+            <div class="p-3 border-t border-gray-800">
+                <a href="{{ url_for('logout') }}" id="nav-logout"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-400 hover:text-red-400 hover:bg-red-950/30 transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                    Déconnexion
+                </a>
+            </div>
+        </aside>
+
+        <!-- Contenu principal -->
+        <main class="flex-1 overflow-auto">
+            <!-- Messages flash -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="p-4 space-y-2">
+                        {% for category, message in messages %}
+                            <div class="px-4 py-3 rounded-lg text-sm
+                                {% if category == 'error' %}bg-red-900/50 text-red-300 border border-red-800
+                                {% elif category == 'success' %}bg-green-900/50 text-green-300 border border-green-800
+                                {% else %}bg-yellow-900/50 text-yellow-300 border border-yellow-800
+                                {% endif %}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
