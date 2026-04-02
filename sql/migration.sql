@@ -43,3 +43,13 @@ CREATE TABLE sizes (
     FOREIGN KEY (id_scan)   REFERENCES scans(id_scan),
     FOREIGN KEY (id_folder) REFERENCES folders(id_folder)
 );
+
+-- ------------------------------------------------------------
+-- 3. Index de performance
+-- ------------------------------------------------------------
+
+-- Accélère la recherche du dernier scan réussi (utilisé par db.py)
+CREATE INDEX idx_scan_status_date ON scans(status, date_);
+
+-- Accélère la récupération de l'historique complet d'un dossier (utilisé par l'Intranet)
+CREATE INDEX idx_sizes_id_folder ON sizes(id_folder);

@@ -45,7 +45,15 @@
 
 ## Installation
 
-### 1. Lancer le script de migration
+### 1. Index de performance (en plus des clés primaires et uniques)
+
+| Index                 | Table   | Colinne(s)       | Utilité                               |
+| --------------------- | ------- | ---------------- | ------------------------------------- |
+| `uq_path`             | `folders` | `path`         | Recherche de dossier par chemin (UNIQUE) |
+| `idx_scan_status_date` | `scans`   | `status, date_`| Trouver le dernier scan `completed`   |
+| `idx_sizes_id_folder`  | `sizes`   | `id_folder`    | Historique complet d'un dossier       |
+
+### 2. Lancer le script de migration
 
 Depuis une invite de commandes, exécuter le fichier fourni dans `sql/migration.sql` :
 
