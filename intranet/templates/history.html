@@ -2,17 +2,457 @@
 
 {% block title %}Historique des dossiers — SuperviseurDossiers{% endblock %}
 
-{% block content %}
-<div class="p-8">
-    <h1 class="text-2xl font-bold text-white mb-2">Historique des dossiers</h1>
-    <p class="text-gray-400 text-sm">Explorez l'arborescence et l'évolution des tailles</p>
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+    .folder-item {
+        transition: background 0.12s ease;
+        cursor: pointer;
+        border-left: 2px solid transparent;
+    }
+    .folder-item:hover  { background: rgba(99,102,241,.08); border-left-color: rgba(99,102,241,.4); }
+    .folder-item.active { background: rgba(99,102,241,.15); border-left-color: #6366f1; }
 
-    <!-- Placeholder — sera implémenté à l'étape 7 -->
-    <div class="mt-8 bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
-        <svg class="w-12 h-12 mx-auto text-gray-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-        </svg>
-        <p class="text-gray-500 text-sm">L'arborescence et les graphiques seront implémentés prochainement.</p>
+    .children-wrap {
+        overflow: hidden;
+        display: none;
+    }
+    .children-wrap.open { display: block; }
+
+    #folder-tree::-webkit-scrollbar { width: 4px; }
+    #folder-tree::-webkit-scrollbar-track { background: transparent; }
+    #folder-tree::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 2px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex" style="height:calc(100vh - 0px);">
+
+    <!-- ── Panneau gauche : arborescence ── -->
+    <aside id="sidebar" class="w-80 min-w-[250px] max-w-[600px] overflow-hidden flex flex-col bg-gray-900/50 flex-shrink-0">
+        <div class="p-4 border-b border-gray-800">
+            <h2 class="text-sm font-semibold text-white mb-2">Arborescence</h2>
+            <div class="relative">
+                <input type="text" id="search-input" placeholder="Rechercher…"
+                    class="w-full bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded-lg
+                           pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-600
+                           placeholder-gray-500 transition-all">
+                <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </div>
+        </div>
+
+        <div id="folder-tree" class="flex-1 overflow-y-auto p-2">
+            {% if not racines %}
+            <p class="text-xs text-gray-600 text-center mt-8">Aucun chemin racine trouvé en BDD.<br>Lancez d'abord un scan.</p>
+            {% else %}
+            {% for r in racines %}
+            {# Pas d'apostrophe dans onclick pour éviter les conflits — on passe data-* et on lit en JS #}
+            <div class="folder-node">
+                <div class="folder-item rounded-md px-2 py-1.5 mb-0.5 flex items-center gap-2"
+                     style="padding-left:8px;"
+                     data-id="{{ r.id_folder }}"
+                     data-path="{{ r.path }}"
+                     data-depth="0"
+                     data-has-children="{{ 'true' if r.has_children else 'false' }}"
+                     data-expanded="false"
+                     onclick="handleFolderClick(this)">
+
+                    <!-- Flèche expand (visible si has_children) -->
+                    <svg class="chevron w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200
+                                {% if not r.has_children %}opacity-0{% else %}text-gray-500{% endif %}"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+
+                    <svg class="w-4 h-4 flex-shrink-0 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                    </svg>
+
+                    <!-- Nom du dossier -->
+                    <div class="flex-1 min-w-0">
+                        <span class="text-xs text-gray-300 block truncate font-mono folder-name-text">
+                            {{ r.path.split('\\')|last if r.path.split('\\')|last != '' else r.path }}
+                        </span>
+                    </div>
+                    <span class="text-[10px] text-gray-600 flex-shrink-0">{{ (r.size_kb / 1024) | round(1) }} Mo</span>
+                    {% if r.is_new %}<span class="text-[9px] bg-primary-900/80 text-primary-300 border border-primary-800 px-1 rounded">NEW</span>{% endif %}
+                </div>
+                <!-- Zone enfants injectée dynamiquement -->
+                <div class="children-wrap" id="children-{{ r.id_folder }}"></div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </aside>
+
+    <!-- Poignée de redimensionnement (Resizer) -->
+    <div id="resizer" class="w-1.5 flex-shrink-0 bg-gray-800 hover:bg-primary-500 cursor-col-resize transition-colors z-10"></div>
+
+    <!-- ── Panneau droit : graphique ── -->
+    <main class="flex-1 flex flex-col overflow-hidden p-6">
+
+        <div id="placeholder" class="flex-1 flex flex-col items-center justify-center text-center">
+            <div class="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mb-4">
+                <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+            </div>
+            <p class="text-gray-500 text-sm font-medium">Sélectionnez un dossier</p>
+            <p class="text-gray-600 text-xs mt-1">L'historique de sa taille s'affichera ici</p>
+        </div>
+
+        <div id="chart-container" class="hidden flex-1 flex flex-col overflow-y-auto">
+            <div class="mb-4 flex items-start justify-between gap-4 flex-shrink-0">
+                <div class="min-w-0">
+                    <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Dossier sélectionné</p>
+                    <h2 id="chart-title" class="text-base font-semibold text-white font-mono truncate"></h2>
+                </div>
+                <div class="flex gap-3 flex-shrink-0">
+                    <div class="bg-gray-800 rounded-lg px-4 py-2 text-center">
+                        <p class="text-[10px] text-gray-500 uppercase tracking-wider">Taille actuelle</p>
+                        <p id="current-size" class="text-lg font-bold text-white mt-0.5">—</p>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg px-4 py-2 text-center">
+                        <p class="text-[10px] text-gray-500 uppercase tracking-wider">Variation</p>
+                        <p id="size-delta" class="text-lg font-bold mt-0.5">—</p>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg px-4 py-2 text-center">
+                        <p class="text-[10px] text-gray-500 uppercase tracking-wider">Points</p>
+                        <p id="scan-count" class="text-lg font-bold text-white mt-0.5">—</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Graphique -->
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 flex-shrink-0 mb-6" style="height: 320px;">
+                <canvas id="history-chart"></canvas>
+            </div>
+            
+            <!-- Tableau détaillé -->
+            <div class="bg-gray-900 border border-gray-800 rounded-xl flex-1 overflow-hidden flex flex-col mb-4">
+                <div class="p-4 border-b border-gray-800 bg-gray-900">
+                    <h3 class="text-sm font-semibold text-white">Historique détaillé (30 derniers jours)</h3>
+                </div>
+                <div class="overflow-y-auto w-full">
+                    <table class="w-full text-left text-xs text-gray-400">
+                        <thead class="bg-gray-800/50 text-gray-500 uppercase sticky top-0">
+                            <tr>
+                                <th class="px-6 py-3 font-medium">Date</th>
+                                <th class="px-6 py-3 font-medium text-right">Taille</th>
+                                <th class="px-6 py-3 font-medium text-right">Variation</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="divide-y divide-gray-800/50">
+                            <!-- JS Inject -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="chart-loader" class="hidden flex-1 flex items-center justify-center">
+            <div class="flex flex-col items-center gap-3">
+                <div class="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-gray-500 text-xs">Chargement…</p>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Global Tooltip JS pour ne pas être coupé par overflow -->
+<div id="global-tooltip" class="fixed hidden z-[9999] pointer-events-none w-max max-w-[350px]">
+    <div class="bg-gray-800 text-gray-200 text-[11px] font-mono py-1.5 px-3 rounded shadow-xl border border-gray-700 whitespace-normal break-all">
+        <!-- Content injected by JS -->
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let chartInstance = null;
+let activeItem = null;
+
+// ── Clic sur un dossier ──────────────────────────────────────────────
+function handleFolderClick(el) {
+    const id          = el.dataset.id;
+    const path        = el.dataset.path;
+    const hasChildren = el.dataset.hasChildren === 'true';
+    const expanded    = el.dataset.expanded === 'true';
+    const depth       = parseInt(el.dataset.depth, 10);
+
+    // Highlight
+    if (activeItem) activeItem.classList.remove('active');
+    el.classList.add('active');
+    activeItem = el;
+
+    // --- Toggle enfants ---
+    if (hasChildren) {
+        const childWrap = document.getElementById('children-' + id);
+        const chevron   = el.querySelector('.chevron');
+
+        if (expanded) {
+            // Réduire
+            childWrap.classList.remove('open');
+            chevron.style.transform = '';
+            el.dataset.expanded = 'false';
+        } else {
+            // Étendre : charger les enfants si pas encore chargés
+            if (!childWrap.dataset.loaded) {
+                loadChildren(childWrap, path, depth + 1);
+            }
+            childWrap.classList.add('open');
+            chevron.style.transform = 'rotate(90deg)';
+            el.dataset.expanded = 'true';
+        }
+    }
+
+    // --- Graphique historique ---
+    loadChart(id, path);
+}
+
+// ── Chargement des enfants via API ───────────────────────────────────
+function loadChildren(wrapEl, parentPath, depth) {
+    wrapEl.innerHTML = '<div class="text-[10px] text-gray-600 px-6 py-1.5 animate-pulse">Chargement…</div>';
+
+    fetch('/api/enfants?path=' + encodeURIComponent(parentPath))
+        .then(r => r.json())
+        .then(items => {
+            wrapEl.innerHTML = '';
+            if (!items || items.length === 0) {
+                wrapEl.innerHTML = '<div class="text-[10px] text-gray-700 px-10 py-1">Aucun sous-dossier</div>';
+                return;
+            }
+            items.forEach(item => {
+                const name   = item.path.split('\\').pop();
+                const sizeMo = (item.size_kb / 1024).toFixed(1);
+                const indent = 8 + depth * 16;
+
+                const node = document.createElement('div');
+                node.className = 'folder-node';
+                node.innerHTML = `
+                    <div class="folder-item rounded-md px-2 py-1.5 mb-0.5 flex items-center gap-2"
+                         style="padding-left:${indent}px;"
+                         data-id="${item.id_folder}"
+                         data-path="${item.path}"
+                         data-depth="${depth}"
+                         data-has-children="${item.has_children}"
+                         data-expanded="false"
+                         onclick="handleFolderClick(this)">
+                        <svg class="chevron w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${item.has_children ? 'text-gray-500' : 'opacity-0'}"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                        <svg class="w-4 h-4 flex-shrink-0 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                        </svg>
+                        
+                        <!-- Nom du dossier -->
+                        <div class="flex-1 min-w-0">
+                            <span class="text-xs text-gray-300 block truncate font-mono folder-name-text">${name || item.path}</span>
+                        </div>
+                        <span class="text-[10px] text-gray-600 flex-shrink-0">${sizeMo} Mo</span>
+                        ${item.is_new ? '<span class="text-[9px] bg-primary-900/80 text-primary-300 border border-primary-800 px-1 rounded">NEW</span>' : ''}
+                    </div>
+                    <div class="children-wrap" id="children-${item.id_folder}"></div>
+                `;
+                wrapEl.appendChild(node);
+            });
+            wrapEl.dataset.loaded = 'true';
+        })
+        .catch(() => {
+            wrapEl.innerHTML = '<div class="text-[10px] text-red-500 px-10 py-1">Erreur de chargement</div>';
+        });
+}
+
+// ── Graphique Chart.js ────────────────────────────────────────────────
+function loadChart(id, path) {
+    document.getElementById('placeholder').classList.add('hidden');
+    document.getElementById('chart-container').classList.add('hidden');
+    document.getElementById('chart-loader').classList.remove('hidden');
+
+    fetch('/api/historique/' + id)
+        .then(r => r.json())
+        .then(data => renderChart(data, path))
+        .catch(() => {
+            document.getElementById('chart-loader').classList.add('hidden');
+            document.getElementById('placeholder').classList.remove('hidden');
+        });
+}
+
+function renderChart(data, path) {
+    document.getElementById('chart-loader').classList.add('hidden');
+
+    if (!data || !data.labels || data.labels.length === 0) {
+        document.getElementById('placeholder').classList.remove('hidden');
+        return;
+    }
+
+    document.getElementById('chart-container').classList.remove('hidden');
+
+    const current = data.data[data.data.length - 1];
+    const delta   = current - data.data[0];
+    const deltaEl = document.getElementById('size-delta');
+
+    document.getElementById('chart-title').textContent  = path;
+    document.getElementById('current-size').textContent = current.toFixed(1) + ' Mo';
+    document.getElementById('scan-count').textContent   = data.labels.length;
+    deltaEl.textContent  = (delta >= 0 ? '+' : '') + delta.toFixed(1) + ' Mo';
+    deltaEl.className    = 'text-lg font-bold mt-0.5 ' + (delta > 0 ? 'text-red-400' : delta < 0 ? 'text-green-400' : 'text-gray-400');
+
+    if (chartInstance) chartInstance.destroy();
+
+    const ctx = document.getElementById('history-chart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 350);
+    gradient.addColorStop(0, 'rgba(99,102,241,.35)');
+    gradient.addColorStop(1, 'rgba(99,102,241,.01)');
+
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: 'Taille (Mo)',
+                data: data.data,
+                borderColor: '#6366f1',
+                backgroundColor: gradient,
+                borderWidth: 2.5,
+                pointRadius: data.data.length <= 20 ? 4 : 2,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#6366f1',
+                pointBorderColor: '#1f2937',
+                pointBorderWidth: 2,
+                fill: true,
+                tension: 0.4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1f2937',
+                    borderColor: '#374151',
+                    borderWidth: 1,
+                    titleColor: '#9ca3af',
+                    bodyColor: '#f9fafb',
+                    titleFont: { size: 11 },
+                    bodyFont: { size: 13, weight: 'bold' },
+                    padding: 10,
+                    callbacks: { label: ctx => ' ' + ctx.parsed.y.toFixed(2) + ' Mo' }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,.04)' },
+                    ticks: { color: '#6b7280', font: { size: 10 }, maxTicksLimit: 10, maxRotation: 30 }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,.04)' },
+                    ticks: { color: '#6b7280', font: { size: 11 }, callback: v => v + ' Mo' }
+                }
+            }
+        }
+    });
+
+    // --- Mise à jour du tableau ---
+    const tbody = document.getElementById('history-table-body');
+    tbody.innerHTML = '';
+    
+    if (data.history_table && data.history_table.length > 0) {
+        data.history_table.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-800/20";
+            
+            let deltaHtml = '<span class="text-gray-500">-</span>';
+            if (r.delta > 0) {
+                deltaHtml = `<span class="text-red-400 font-medium">+${r.delta.toFixed(1)} Mo</span>`;
+            } else if (r.delta < 0) {
+                deltaHtml = `<span class="text-green-400 font-medium">${r.delta.toFixed(1)} Mo</span>`;
+            } else if (r.delta === 0) {
+                // Première valeur ou aucun changement
+                deltaHtml = `<span class="text-gray-500 font-medium">0.0 Mo</span>`;
+            }
+            
+            tr.innerHTML = `
+                <td class="px-6 py-3 whitespace-nowrap text-gray-300 font-mono">${r.date}</td>
+                <td class="px-6 py-3 whitespace-nowrap text-right font-mono">${r.size_mo.toFixed(1)} Mo</td>
+                <td class="px-6 py-3 whitespace-nowrap text-right font-mono">${deltaHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } else {
+        tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Aucune donnée trouvée.</td></tr>';
+    }
+}
+
+// ── Recherche en temps réel ───────────────────────────────────────────
+document.getElementById('search-input').addEventListener('input', function () {
+    const q = this.value.toLowerCase().trim();
+    // En cas de recherche vide, on réouvre tout
+    document.querySelectorAll('#folder-tree .folder-item').forEach(el => {
+        const path = (el.dataset.path || '').toLowerCase();
+        el.closest('.folder-node').style.display = (!q || path.includes(q)) ? '' : 'none';
+    });
+});
+
+// ── Redimensionnement du panneau latéral ────────────────────────────
+const resizer = document.getElementById('resizer');
+const sidebar = document.getElementById('sidebar');
+let isResizing = false;
+
+resizer.addEventListener('mousedown', function(e) {
+    isResizing = true;
+    document.body.style.cursor = 'col-resize';
+    e.preventDefault(); // Empêche la sélection de texte accidentelle
+});
+
+document.addEventListener('mousemove', function(e) {
+    if (!isResizing) return;
+    // sidebar.getBoundingClientRect().left permet de déduire la taille du menu principal (nav) situé à gauche
+    let newWidth = e.clientX - sidebar.getBoundingClientRect().left;
+    // Contraintes de largeur (mini 250px, maxi 600px)
+    if (newWidth < 250) newWidth = 250;
+    if (newWidth > 600) newWidth = 600;
+    sidebar.style.width = newWidth + 'px';
+});
+
+document.addEventListener('mouseup', function() {
+    isResizing = false;
+    document.body.style.cursor = '';
+});
+// ── Tooltip Global de survol (évite d'être coupé par overflow) ──────
+const globalTooltip = document.getElementById('global-tooltip');
+const tooltipInner = globalTooltip.querySelector('div');
+
+document.getElementById('folder-tree').addEventListener('mouseover', function(e) {
+    const item = e.target.closest('.folder-item');
+    if (!item) return;
+    const path = item.dataset.path;
+    if (path) {
+        tooltipInner.textContent = path;
+        globalTooltip.style.display = 'block';
+    }
+});
+
+document.getElementById('folder-tree').addEventListener('mousemove', function(e) {
+    if (globalTooltip.style.display === 'block') {
+        // Positionne légèrement en bas à droite du curseur
+        globalTooltip.style.left = (e.clientX + 15) + 'px';
+        globalTooltip.style.top = (e.clientY + 15) + 'px';
+    }
+});
+
+document.getElementById('folder-tree').addEventListener('mouseout', function(e) {
+    globalTooltip.style.display = 'none';
+});
+</script>
 {% endblock %}

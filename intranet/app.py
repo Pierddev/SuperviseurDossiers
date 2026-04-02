@@ -93,9 +93,30 @@ def creer_app() -> Flask:
     @app.route("/history")
     @login_required
     def history():
-        return render_template("history.html")
+        from intranet.queries import get_dossiers_racines
+        racines = get_dossiers_racines()
+        return render_template("history.html", racines=racines)
 
     @app.route("/settings")
+    @app.route("/api/enfants")
+    @login_required
+    def api_enfants():
+        from flask import jsonify, request as req
+        from intranet.queries import get_enfants_dossier
+        parent_path = req.args.get("path", "")
+        if not parent_path:
+            return jsonify([])
+        return jsonify(get_enfants_dossier(parent_path))
+
+    @app.route("/api/historique/<int:id_folder>")
+    @login_required
+    def api_historique(id_folder: int):
+        from flask import jsonify
+        from intranet.queries import get_historique_dossier
+        data = get_historique_dossier(id_folder)
+        return jsonify(data)
+
+
     @login_required
     def settings():
         return render_template("settings.html")
