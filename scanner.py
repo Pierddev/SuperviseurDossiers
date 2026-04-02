@@ -54,7 +54,7 @@ def scanner() -> None:
                 taille_scan,
                 changement_racine,
             ) = traiter_dossiers_en_lot(
-                connexion_mysql, dossiers_avec_tailles, chemin_racine
+                connexion_mysql, dossiers_avec_tailles, chemin_racine, id_scan
             )
             nouveaux_dossiers.extend(nouveaux)
             dossiers_modifies.extend(modifies)
@@ -65,8 +65,11 @@ def scanner() -> None:
         nouveaux_dossiers = filtrer_dossiers_redondants(nouveaux_dossiers)
         dossiers_modifies = filtrer_dossiers_redondants(dossiers_modifies)
 
+        # Convertir les totaux de Ko en Mo pour l'affichage dans la notification
+        total_changement_mo = round(total_changement_taille / 1024)
+
         # Construction du message pour la notification Teams
-        signe = "+" if total_changement_taille > 0 else ""
+        signe = "+" if total_changement_mo > 0 else ""
         message = "✅ **Scan terminé avec succès**"
 
         # Calcul de la durée du scan
@@ -82,7 +85,7 @@ def scanner() -> None:
             duree_formatee = f"{secondes}s"
 
         message += f"\n<br>📅 {datetime.now().strftime('%d/%m/%Y à %H:%M')} ⏱️ Durée du scan : {duree_formatee}"
-        message += f"\n<br>📊 **Résumé** : {len(nouveaux_dossiers) + len(dossiers_modifies)} changements détectés (Total {signe}{total_changement_taille} Mo) \n"
+        message += f"\n<br>📊 **Résumé** : {len(nouveaux_dossiers) + len(dossiers_modifies)} changements détectés (Total {signe}{total_changement_mo} Mo) \n"
 
         # Seuil pour la mise en évidence par poids (5 * SEUIL_DEFAUT)
         seuil_poids = int(os.getenv("SEUIL_DEFAUT", 100)) * 5
@@ -113,14 +116,14 @@ def scanner() -> None:
         if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0:
             message += "\n\nAucun dossier modifié ou nouveau"
 
-        terminer_scan(connexion_mysql, id_scan, "termine")
+        terminer_scan(connexion_mysql, id_scan, "completed")
         envoyer_notif_teams(message)
 
     except Exception as e:
-        # En cas d'erreur, marquer le scan comme "erreur" et notifier
+        # En cas d'erreur, marquer le scan comme "failed" et notifier
         envoyer_notif_teams(f"❌ Erreur critique durant le scan : {e}")
         if connexion_mysql and id_scan:
-            terminer_scan(connexion_mysql, id_scan, "erreur")
+            terminer_scan(connexion_mysql, id_scan, "failed")
 
     finally:
         # Toujours se déconnecter de la BDD, même en cas d'erreur
