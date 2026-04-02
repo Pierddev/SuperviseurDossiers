@@ -86,7 +86,9 @@ def creer_app() -> Flask:
     @app.route("/")
     @login_required
     def dashboard():
-        return render_template("dashboard.html")
+        from intranet.queries import get_stats_dashboard
+        stats = get_stats_dashboard()
+        return render_template("dashboard.html", stats=stats)
 
     @app.route("/history")
     @login_required

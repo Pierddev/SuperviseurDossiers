@@ -4,15 +4,154 @@
 
 {% block content %}
 <div class="p-8">
-    <h1 class="text-2xl font-bold text-white mb-2">Tableau de bord</h1>
-    <p class="text-gray-400 text-sm">Vue d'ensemble de l'état du système</p>
 
-    <!-- Placeholder — sera implémenté à l'étape 6 -->
-    <div class="mt-8 bg-gray-900 border border-gray-800 rounded-xl p-12 text-center">
-        <svg class="w-12 h-12 mx-auto text-gray-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
-        </svg>
-        <p class="text-gray-500 text-sm">Le contenu du dashboard sera implémenté prochainement.</p>
+    <!-- En-tête -->
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-white">Tableau de bord</h1>
+        <p class="text-gray-400 text-sm mt-1">Vue d'ensemble de l'état du système</p>
     </div>
+
+    {% if not stats %}
+    <!-- Erreur de connexion BDD -->
+    <div class="bg-red-900/30 border border-red-800 rounded-xl p-6 flex items-center gap-4">
+        <svg class="w-6 h-6 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <div>
+            <p class="text-red-300 font-medium">Impossible de se connecter à la base de données</p>
+            <p class="text-red-400 text-sm mt-0.5">Vérifiez les paramètres de connexion dans le fichier <span class="font-mono">.env</span></p>
+        </div>
+    </div>
+    {% else %}
+
+    <!-- Cartes de statistiques -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+        <!-- Info Dernier Scan (Date + Statut) -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-primary-600/15 rounded-xl flex items-center justify-center">
+                    <svg class="w-6 h-6 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Dernier scan</p>
+                    {% if stats.dernier_scan %}
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-xl font-bold text-white">{{ stats.dernier_scan.date_.strftime('%d/%m/%Y') }}</span>
+                            <span class="text-sm text-gray-400">à {{ stats.dernier_scan.date_.strftime('%H:%M') }}</span>
+                        </div>
+                    {% else %}
+                        <p class="text-xl font-semibold text-gray-500">Aucun scan</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if stats.dernier_scan %}
+                {% set status = stats.dernier_scan.status %}
+                <div class="flex flex-col items-end gap-1">
+                    <p class="text-[10px] font-medium text-gray-500 uppercase tracking-widest">Statut</p>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium
+                        {% if status == 'completed' %}bg-green-900/50 text-green-300 border border-green-800
+                        {% elif status == 'in_progress' %}bg-yellow-900/50 text-yellow-300 border border-yellow-800
+                        {% else %}bg-red-900/50 text-red-300 border border-red-800
+                        {% endif %}">
+                        <span class="w-1.5 h-1.5 rounded-full
+                            {% if status == 'completed' %}bg-green-400
+                            {% elif status == 'in_progress' %}bg-yellow-400 animate-pulse
+                            {% else %}bg-red-400
+                            {% endif %}"></span>
+                        {% if status == 'completed' %}Terminé
+                        {% elif status == 'in_progress' %}En cours
+                        {% else %}Erreur
+                        {% endif %}
+                    </span>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Dossiers surveillés -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-5 flex items-center gap-4">
+            <div class="w-12 h-12 bg-primary-600/15 rounded-xl flex items-center justify-center">
+                <svg class="w-6 h-6 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-0.5">Dossiers surveillés</p>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-bold text-white">{{ stats.total_dossiers | default(0) }}</span>
+                    <span class="text-xs text-gray-500">({{ stats.total_scans }} scans archivés)</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Top 5 changements -->
+    <div class="bg-gray-900 border border-gray-800 rounded-xl">
+        <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+            <div>
+                <h2 class="text-sm font-semibold text-white">Top 5 — Plus grands changements</h2>
+                <p class="text-xs text-gray-500 mt-0.5">Comparaison entre les deux derniers scans</p>
+            </div>
+        </div>
+
+        {% if stats.top_changements %}
+        <div class="divide-y divide-gray-800">
+            {% for dossier in stats.top_changements %}
+            {% set diff_mo = (dossier.diff_kb / 1024) | round(1) %}
+            {% set size_mo = (dossier.size_actuel_kb / 1024) | round(1) %}
+            <div class="px-6 py-4 flex items-center gap-4 hover:bg-gray-800/50 transition-colors">
+                <!-- Icône dossier -->
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0
+                    {% if dossier.diff_kb > 0 %}bg-red-900/30{% else %}bg-green-900/30{% endif %}">
+                    <svg class="w-5 h-5 {% if dossier.diff_kb > 0 %}text-red-400{% else %}text-green-400{% endif %}"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                    </svg>
+                </div>
+
+                <!-- Chemin avec tooltip personnalisé -->
+                <div class="flex-1 min-w-0 relative group">
+                    <p class="text-sm text-gray-200 font-mono truncate cursor-help">
+                        {{ dossier.path }}
+                    </p>
+                    <!-- Tooltip Tailwind -->
+                    <div class="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                        <div class="bg-gray-800 text-gray-100 text-xs font-mono py-1.5 px-3 rounded-lg shadow-xl shadow-black/50 border border-gray-700 max-w-lg break-all">
+                            {{ dossier.path }}
+                        </div>
+                        <!-- Flèche du tooltip -->
+                        <div class="absolute -bottom-1 left-4 w-2 h-2 bg-gray-800 border-b border-r border-gray-700 transform rotate-45"></div>
+                    </div>
+                    
+                    <p class="text-xs text-gray-500 mt-0.5">Taille actuelle : {{ size_mo }} Mo</p>
+                </div>
+
+                <!-- Delta -->
+                <div class="flex-shrink-0 text-right">
+                    <span class="text-sm font-semibold
+                        {% if dossier.diff_kb > 0 %}text-red-400{% else %}text-green-400{% endif %}">
+                        {% if dossier.diff_kb > 0 %}+{% endif %}{{ diff_mo }} Mo
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="px-6 py-12 text-center">
+            <svg class="w-10 h-10 mx-auto text-gray-700 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            <p class="text-sm text-gray-500">
+                Au moins deux scans complétés sont nécessaires pour afficher les changements.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+    {% endif %}
 </div>
 {% endblock %}
