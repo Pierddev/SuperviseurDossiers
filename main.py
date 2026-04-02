@@ -7,6 +7,7 @@ import argparse
 import logging
 import os
 import sys
+import threading
 import time
 from datetime import datetime
 
@@ -197,6 +198,29 @@ if __name__ == "__main__":
             print("ℹ️ Aucun plugin chargé.")
         print("-" * 60)
 
+        # Démarrage conditionnel de l'Intranet (interface web)
+        intranet_enabled = os.getenv("INTRANET_ENABLED", "0") == "1"
+        statut_intranet = "❌ Désactivé"
+        if intranet_enabled:
+            try:
+                from intranet.app import creer_app
+
+                intra_port = int(os.getenv("INTRA_PORT", 5000))
+                app = creer_app()
+
+                # Lance Flask dans un thread daemon (s'arrête avec le programme principal)
+                thread_intranet = threading.Thread(
+                    target=app.run,
+                    kwargs={"host": "0.0.0.0", "port": intra_port, "debug": False},
+                    daemon=True,
+                )
+                thread_intranet.start()
+                statut_intranet = f"✅ Actif sur le port {intra_port}"
+                print(f"🌐 Intranet démarré sur http://0.0.0.0:{intra_port}")
+            except Exception as e:
+                statut_intranet = f"❌ Erreur ({e})"
+                print(f"❌ Erreur lors du démarrage de l'Intranet : {e}")
+
         # Planifie la vérification périodique des chemins manquants si nécessaire
         if chemins_manquants:
             schedule.every(10).minutes.do(verifier_chemins_manquants, chemins_manquants)
@@ -247,7 +271,8 @@ if __name__ == "__main__":
             f"📅 **Date** : {datetime.now().strftime('%d/%m/%Y à %H:%M')}<br>"
             f"⏱️ **Prochain scan** : {heure_scan}<br>"
             f"🗄️ **Base de données** : {statut_bdd_emoji}<br>"
-            f"🔌 **Plugins** : {statut_plugins}<br><br>"
+            f"🔌 **Plugins** : {statut_plugins}<br>"
+            f"🌐 **Intranet** : {statut_intranet}<br><br>"
             f"📁 **État des chemins racines** :<br>"
         )
 
