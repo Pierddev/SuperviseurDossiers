@@ -4,6 +4,7 @@ Fournit un dashboard, l'historique des dossiers et la configuration.
 """
 
 import os
+import dotenv
 
 from flask import Flask, redirect, render_template, request, url_for, flash
 from flask_login import (
@@ -37,6 +38,7 @@ def creer_app() -> Flask:
     )
 
     app.config["SECRET_KEY"] = os.getenv("INTRA_SECRET_KEY", "change-me-in-production")
+    app.config["TEMPLATES_AUTO_RELOAD"] = True
 
     # --- Flask-Login ---
     login_manager = LoginManager()
@@ -97,7 +99,6 @@ def creer_app() -> Flask:
         racines = get_dossiers_racines()
         return render_template("history.html", racines=racines)
 
-    @app.route("/settings")
     @app.route("/api/enfants")
     @login_required
     def api_enfants():
@@ -117,8 +118,133 @@ def creer_app() -> Flask:
         return jsonify(data)
 
 
+    @app.route("/settings", methods=["GET", "POST"])
     @login_required
     def settings():
-        return render_template("settings.html")
+        from datetime import datetime
+        env_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+
+        if request.method == "POST":
+            def _save(key, val):
+                dotenv.set_key(env_file, key, val)
+                os.environ[key] = val
+
+            # --- Base de données ---
+            _save("DB_HOST",     request.form.get("db_host", "localhost"))
+            _save("DB_PORT",     request.form.get("db_port", "3306"))
+            _save("DB_USER",     request.form.get("db_user", "root"))
+            _save("DB_NAME",     request.form.get("db_name", "superviseur_dossiers"))
+            pwd = request.form.get("db_password", "")
+            if pwd:  # Ne remplace le mot de passe que s'il est renseigné
+                _save("DB_PASSWORD", pwd)
+
+            # --- Teams ---
+            _save("TEAMS_WEBHOOK_URL", request.form.get("teams_webhook", ""))
+
+            # --- Planning ---
+            _save("HEURE_SCAN",          request.form.get("heure_scan", "17:30"))
+            _save("DELAI_VERIFICATION",  request.form.get("delai_verification", "300"))
+
+            # --- Chemins racines (liste → CSV) ---
+            racines = [c.strip() for c in request.form.get("chemins_racines", "").split("\n") if c.strip()]
+            _save("CHEMINS_RACINES", ",".join(racines))
+
+            # --- Chemins exclus (liste → CSV) ---
+            exclus = [c.strip() for c in request.form.get("chemins_exclus", "").split("\n") if c.strip()]
+            _save("CHEMINS_EXCLUS", ",".join(exclus))
+
+            # --- Seuils ---
+            _save("SEUIL_DEFAUT", request.form.get("seuil_defaut", "100"))
+
+            chemins_seuil = request.form.getlist("custom_path[]")
+            valeurs_seuil = request.form.getlist("custom_val[]")
+            seuils_valides = [f"{c.strip()}={v.strip()}" for c, v in zip(chemins_seuil, valeurs_seuil) if c.strip() and v.strip()]
+            _save("SEUILS_PERSONNALISES", ";".join(seuils_valides))
+
+            # Horodatage de la dernière sauvegarde
+            _save("LAST_SAVED", datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+            flash("Configuration sauvegardée avec succès.", "success")
+            return redirect(url_for("settings"))
+
+        # --- Lecture / préparation des données pour la vue ---
+        def _get(key, default=""):
+            return os.getenv(key, default)
+
+        chemins_racines = [c.strip() for c in _get("CHEMINS_RACINES").split(",") if c.strip()]
+        chemins_exclus  = [c.strip() for c in _get("CHEMINS_EXCLUS").split(",") if c.strip()]
+
+        seuils_perso = []
+        for paire in _get("SEUILS_PERSONNALISES").split(";"):
+            if "=" in paire:
+                chemin, val = paire.rsplit("=", 1)
+                seuils_perso.append({"path": chemin.strip(), "val": val.strip()})
+
+        ctx = {
+            "db_host":            _get("DB_HOST", "localhost"),
+            "db_port":            _get("DB_PORT", "3306"),
+            "db_user":            _get("DB_USER", "root"),
+            "db_name":            _get("DB_NAME", "superviseur_dossiers"),
+            "teams_webhook":      _get("TEAMS_WEBHOOK_URL"),
+            "heure_scan":         _get("HEURE_SCAN", "17:30"),
+            "delai_verification": _get("DELAI_VERIFICATION", "300"),
+            "chemins_racines":    chemins_racines,
+            "chemins_exclus":     chemins_exclus,
+            "seuil_defaut":       _get("SEUIL_DEFAUT", "100"),
+            "seuils_perso":       seuils_perso,
+            "last_saved":         _get("LAST_SAVED", "Jamais"),
+        }
+        return render_template("settings.html", **ctx)
+
+    @app.route("/api/test-db", methods=["POST"])
+    @login_required
+    def api_test_db():
+        from flask import jsonify, request
+        try:
+            import mysql.connector
+            data = request.get_json() or {}
+            
+            # Utilise les données du POST, sinon les variables d'env
+            host = data.get("host") or os.getenv("DB_HOST", "localhost")
+            port = data.get("port") or os.getenv("DB_PORT", "3306")
+            user = data.get("user") or os.getenv("DB_USER", "root")
+            db_name = data.get("name") or os.getenv("DB_NAME", "superviseur_dossiers")
+            
+            # Pour le mot de passe, si c'est vide dans les données reçues, on prend l'env
+            # (car l'input sur le front peut être vide pour "ne pas changer")
+            password = data.get("password") or os.getenv("DB_PASSWORD", "")
+            
+            conn = mysql.connector.connect(
+                host=host,
+                port=int(port),
+                user=user,
+                password=password,
+                database=db_name,
+                connect_timeout=5
+            )
+            conn.close()
+            return jsonify({"ok": True, "msg": "Connexion à la base de données réussie."})
+        except Exception as e:
+            return jsonify({"ok": False, "msg": f"Échec : {str(e)}"})
+
+    @app.route("/api/test-teams", methods=["POST"])
+    @login_required
+    def api_test_teams():
+        from flask import jsonify, request
+        import urllib.request
+        import json as _json
+        
+        data = request.get_json() or {}
+        url = data.get("webhook") or os.getenv("TEAMS_WEBHOOK_URL", "")
+        
+        if not url:
+            return jsonify({"ok": False, "msg": "URL du webhook non configurée."})
+        try:
+            payload = _json.dumps({"text": "✅ Test de notification — SuperviseurDossiers (Live Test)"}).encode()
+            req = urllib.request.Request(url, data=payload, headers={"Content-Type": "application/json"}, method="POST")
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                return jsonify({"ok": True, "msg": f"Notification envoyée (HTTP {resp.status})."})
+        except Exception as e:
+            return jsonify({"ok": False, "msg": f"Échec : {str(e)}"})
 
     return app

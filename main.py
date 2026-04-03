@@ -208,15 +208,37 @@ if __name__ == "__main__":
                 intra_port = int(os.getenv("INTRA_PORT", 5000))
                 app = creer_app()
 
-                # Lance Flask dans un thread daemon (s'arrête avec le programme principal)
-                thread_intranet = threading.Thread(
-                    target=app.run,
-                    kwargs={"host": "0.0.0.0", "port": intra_port, "debug": False},
-                    daemon=True,
-                )
-                thread_intranet.start()
-                statut_intranet = f"✅ Actif sur le port {intra_port}"
-                print(f"🌐 Intranet démarré sur http://0.0.0.0:{intra_port}")
+                # Gestion du mode Debug / Hot-Reload
+                debug_mode = os.getenv("FLASK_DEBUG", "0") == "1"
+                
+                if debug_mode:
+                    # En mode debug, Flask doit tourner sur le thread principal pour le reloader
+                    # On lance donc l'ordonnanceur de scan dans un thread séparé
+                    def lancer_ordonnanceur():
+                        print("⏱️  Ordonnanceur de scan démarré en arrière-plan")
+                        while True:
+                            schedule.run_pending()
+                            time.sleep(delai_verification)
+                            
+                    thread_scan = threading.Thread(target=lancer_ordonnanceur, daemon=True)
+                    thread_scan.start()
+                    
+                    # On lance Flask en bloquant (avec reloader actif)
+                    # Note : Cela ne s'exécutera que si INTRANET_ENABLED=1
+                    statut_intranet = f"✅ Actif (RELOAD) sur le port {intra_port}"
+                    print(f"🌐 Intranet démarré sur http://0.0.0.0:{intra_port} (Auto-reload actif)")
+                    app.run(host="0.0.0.0", port=intra_port, debug=True)
+                    # Le code s'arrête ici tant que Flask tourne
+                else:
+                    # Mode production / normal : Flask en arrière-plan
+                    thread_intranet = threading.Thread(
+                        target=app.run,
+                        kwargs={"host": "0.0.0.0", "port": intra_port, "debug": False},
+                        daemon=True,
+                    )
+                    thread_intranet.start()
+                    statut_intranet = f"✅ Actif sur le port {intra_port}"
+                    print(f"🌐 Intranet démarré sur http://0.0.0.0:{intra_port}")
             except Exception as e:
                 statut_intranet = f"❌ Erreur ({e})"
                 print(f"❌ Erreur lors du démarrage de l'Intranet : {e}")
@@ -291,6 +313,8 @@ if __name__ == "__main__":
         print("Le programme est en cours d'execution... Ne fermez pas cette fenetre")
 
         # Boucle infinie pour que le programme continue de tourner
-        while True:
-            schedule.run_pending()
-            time.sleep(delai_verification)
+        # (Seulement si non-bloqué par Flask Debug au-dessus)
+        if os.getenv("FLASK_DEBUG", "0") != "1":
+            while True:
+                schedule.run_pending()
+                time.sleep(delai_verification)
