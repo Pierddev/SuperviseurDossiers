@@ -120,7 +120,7 @@ def terminer_scan(
     try:
         curseur = connexion_mysql.cursor()
         curseur.execute(
-            "UPDATE scans SET status = %s WHERE id_scan = %s",
+            "UPDATE scans SET status = %s, date_end = NOW() WHERE id_scan = %s",
             (statut, id_scan),
         )
         connexion_mysql.commit()

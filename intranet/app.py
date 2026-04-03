@@ -99,6 +99,14 @@ def creer_app() -> Flask:
         racines = get_dossiers_racines()
         return render_template("history.html", racines=racines)
 
+    @app.route("/scans")
+    @login_required
+    def scans():
+        from intranet.queries import get_scans_history
+        # On limite aux 50 derniers scans pour l'affichage
+        liste_scans = get_scans_history(limit=50)
+        return render_template("scans.html", scans=liste_scans)
+
     @app.route("/api/enfants")
     @login_required
     def api_enfants():
@@ -115,6 +123,16 @@ def creer_app() -> Flask:
         from flask import jsonify
         from intranet.queries import get_historique_dossier
         data = get_historique_dossier(id_folder)
+        return jsonify(data)
+
+    @app.route("/api/scan-details/<int:id_scan>")
+    @login_required
+    def api_scan_details(id_scan: int):
+        from flask import jsonify
+        from intranet.queries import get_scan_details
+        data = get_scan_details(id_scan)
+        if not data:
+            return jsonify({"error": "Scan introuvable"}), 404
         return jsonify(data)
 
 

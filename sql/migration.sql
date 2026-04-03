@@ -31,6 +31,7 @@ CREATE TABLE folders (
 CREATE TABLE scans (
     id_scan    BIGINT       NOT NULL AUTO_INCREMENT,
     date_      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    date_end   TIMESTAMP    NULL     DEFAULT NULL,
     status     VARCHAR(20)  NOT NULL DEFAULT 'in_progress',
     PRIMARY KEY (id_scan)
 );

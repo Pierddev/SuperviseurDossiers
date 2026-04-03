@@ -12,7 +12,7 @@
 | Table     | Rôle                                                                 |
 | --------- | -------------------------------------------------------------------- |
 | `folders` | Stocke le chemin de chaque dossier scanné et son statut (nouveau ou non) |
-| `scans`   | Enregistre chaque exécution de scan (date + statut)                  |
+| `scans`   | Enregistre chaque exécution de scan (date début, date fin + statut) |
 | `sizes`   | Lie un dossier à un scan avec sa taille en Ko — permet l'historisation complète |
 
 ### Détail des tables
@@ -27,11 +27,12 @@
 
 #### `scans`
 
-| Colonne   | Type          | Description                                                        |
-| --------- | ------------- | ------------------------------------------------------------------ |
-| `id_scan` | `BIGINT` (PK) | Identifiant unique du scan                                         |
-| `date_`   | `TIMESTAMP`   | Date et heure du scan (UTC)                                        |
-| `status`  | `VARCHAR(20)` | Statut : `in_progress`, `completed`, `failed`                      |
+| Colonne    | Type          | Description                                                        |
+| ---------- | ------------- | ------------------------------------------------------------------ |
+| `id_scan`  | `BIGINT` (PK) | Identifiant unique du scan                                         |
+| `date_`    | `TIMESTAMP`   | Date et heure de **début** du scan (UTC)                           |
+| `date_end` | `TIMESTAMP`   | Date et heure de **fin** du scan (NULL tant que le scan tourne)    |
+| `status`   | `VARCHAR(20)` | Statut : `in_progress`, `completed`, `failed`                      |
 
 #### `sizes`
 

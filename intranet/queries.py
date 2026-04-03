@@ -41,6 +41,179 @@ def get_derniers_scans(limit: int = 10) -> list[dict]:
         conn.close()
 
 
+def get_scans_history(limit: int = 50) -> list[dict]:
+    """
+    Retourne l'historique complet des scans avec leur durée et le nombre de dossiers mis à jour.
+    """
+    conn = get_connexion()
+    if not conn:
+        return []
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """
+            SELECT 
+                sc.id_scan, 
+                sc.date_, 
+                sc.date_end, 
+                sc.status,
+                TIMESTAMPDIFF(SECOND, sc.date_, sc.date_end) AS duration_sec,
+                COUNT(sz.id_folder) AS folders_updated
+            FROM scans sc
+            LEFT JOIN sizes sz ON sc.id_scan = sz.id_scan
+            GROUP BY sc.id_scan
+            ORDER BY sc.date_ DESC 
+            LIMIT %s
+            """,
+            (limit,),
+        )
+        return cur.fetchall()
+    except mysql.connector.Error:
+        return []
+    finally:
+        conn.close()
+
+
+def get_scan_details(id_scan: int) -> dict:
+    """
+    Retourne les détails complets d'un scan :
+    - Le résumé statistique du cycle (nb dossiers, volume total, variation)
+    - La liste des alertes : nouveaux dossiers + dossiers ayant dépassé leur seuil
+    """
+    conn = get_connexion()
+    if not conn:
+        return {}
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # 1. Infos du scan
+        cur.execute(
+            """
+            SELECT id_scan, date_, date_end, status,
+                   TIMESTAMPDIFF(SECOND, date_, date_end) AS duration_sec
+            FROM scans WHERE id_scan = %s
+            """,
+            (id_scan,),
+        )
+        scan = cur.fetchone()
+        if not scan:
+            return {}
+
+        # 2. Résumé : nb dossiers analysés + volume total pour ce scan
+        cur.execute(
+            """
+            SELECT COUNT(*) AS nb_dossiers, SUM(size_kb) AS total_kb
+            FROM sizes WHERE id_scan = %s
+            """,
+            (id_scan,),
+        )
+        resume_row = cur.fetchone()
+        nb_dossiers = resume_row["nb_dossiers"] or 0
+        total_kb = resume_row["total_kb"] or 0
+
+        # 3. Scan précédent immédiat (pour calcul de variation totale)
+        cur.execute(
+            """
+            SELECT id_scan FROM scans
+            WHERE status = 'completed' AND id_scan < %s
+            ORDER BY id_scan DESC LIMIT 1
+            """,
+            (id_scan,),
+        )
+        row_prev = cur.fetchone()
+        id_scan_prev = row_prev["id_scan"] if row_prev else None
+
+        variation_kb = None
+        if id_scan_prev:
+            cur.execute(
+                "SELECT SUM(size_kb) AS total_kb FROM sizes WHERE id_scan = %s",
+                (id_scan_prev,),
+            )
+            prev_row = cur.fetchone()
+            prev_kb = prev_row["total_kb"] or 0
+            variation_kb = total_kb - prev_kb
+
+        # 4. Nouveaux dossiers (première apparition dans sizes à cet id_scan)
+        #    Filtrés : uniquement ceux dont la taille dépasse le seuil configuré
+        seuil_mo = int(os.getenv("SEUIL_DEFAUT", 100))
+        seuil_kb = seuil_mo * 1024
+        cur.execute(
+            """
+            SELECT f.path, sz.size_kb
+            FROM sizes sz
+            JOIN folders f ON sz.id_folder = f.id_folder
+            WHERE sz.id_scan = %s
+              AND sz.size_kb > %s
+              AND NOT EXISTS (
+                  SELECT 1 FROM sizes sz2
+                  WHERE sz2.id_folder = sz.id_folder AND sz2.id_scan < %s
+              )
+            ORDER BY sz.size_kb DESC
+            LIMIT 100
+            """,
+            (id_scan, seuil_kb, id_scan),
+        )
+        nouveaux = [
+            {
+                "type": "nouveau",
+                "chemin": r["path"],
+                "taille_mo": round(r["size_kb"] / 1024, 1),
+            }
+            for r in cur.fetchall()
+        ]
+
+        # 5. Dossiers modifiés (variation > SEUIL_DEFAUT) par rapport au scan précédent
+        alertes_modifs = []
+        if id_scan_prev:
+            cur.execute(
+                """
+                SELECT f.path,
+                       sz_cur.size_kb AS size_kb_cur,
+                       sz_prev.size_kb AS size_kb_prev,
+                       (sz_cur.size_kb - sz_prev.size_kb) AS diff_kb
+                FROM sizes sz_cur
+                JOIN sizes sz_prev ON sz_cur.id_folder = sz_prev.id_folder
+                JOIN folders f ON sz_cur.id_folder = f.id_folder
+                WHERE sz_cur.id_scan = %s
+                  AND sz_prev.id_scan = %s
+                  AND ABS(sz_cur.size_kb - sz_prev.size_kb) > %s
+                ORDER BY ABS(sz_cur.size_kb - sz_prev.size_kb) DESC
+                LIMIT 100
+                """,
+                (id_scan, id_scan_prev, seuil_kb),
+            )
+            alertes_modifs = [
+                {
+                    "type": "modification",
+                    "chemin": r["path"],
+                    "diff_mo": round(r["diff_kb"] / 1024, 1),
+                    "taille_mo": round(r["size_kb_cur"] / 1024, 1),
+                }
+                for r in cur.fetchall()
+            ]
+
+        # Convertit la date pour la sérialisation JSON
+        if scan.get("date_"):
+            scan["date_"] = scan["date_"].strftime("%d/%m/%Y à %H:%M:%S")
+        if scan.get("date_end"):
+            scan["date_end"] = scan["date_end"].strftime("%d/%m/%Y à %H:%M:%S")
+
+        return {
+            "scan": scan,
+            "resume": {
+                "nb_dossiers": nb_dossiers,
+                "total_mo": round(total_kb / 1024 / 1024, 2),
+                "variation_mo": round(variation_kb / 1024 / 1024, 2) if variation_kb is not None else None,
+            },
+            "alertes": nouveaux + alertes_modifs,
+        }
+
+    except mysql.connector.Error:
+        return {}
+    finally:
+        conn.close()
+
+
 def get_stats_dashboard() -> dict:
     """
     Retourne les statistiques pour le tableau de bord :

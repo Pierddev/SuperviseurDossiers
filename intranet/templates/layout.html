@@ -102,6 +102,15 @@
                     Historique des dossiers
                 </a>
 
+                <a href="{{ url_for('scans') }}" id="nav-scans"
+                   class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white
+                          {% if request.endpoint == 'scans' %}active text-white{% endif %}">
+                    <svg class="w-5 h-5 opacity-75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Historique des scans
+                </a>
+
                 <a href="{{ url_for('settings') }}" id="nav-settings"
                    class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-300 hover:text-white
                           {% if request.endpoint == 'settings' %}active text-white{% endif %}">
