@@ -167,10 +167,10 @@
 
                 // Variation
                 let variationHtml = '<span class="text-gray-500">—</span>';
-                if (r.variation_mo !== null && r.variation_mo !== undefined) {
-                    const sign = r.variation_mo >= 0 ? '+' : '';
-                    const color = r.variation_mo >= 0 ? 'text-red-400' : 'text-green-400';
-                    variationHtml = `<span class="${color} font-semibold">${sign}${r.variation_mo.toLocaleString('fr-FR')} Go</span>`;
+                if (r.variation_kb !== null && r.variation_kb !== undefined) {
+                    const sign = r.variation_kb > 0 ? '+' : '';
+                    const color = r.variation_kb > 0 ? 'text-red-400' : (r.variation_kb < 0 ? 'text-green-400' : 'text-gray-400');
+                    variationHtml = `<span class="${color} font-semibold">${sign}${window.formatSize(r.variation_kb)}</span>`;
                 }
 
                 // ── Résumé statistique ──
@@ -184,7 +184,7 @@
                         </div>
                         <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
                             <p class="text-xs text-gray-500 mb-1">Volume total</p>
-                            <p class="text-xl font-bold text-white">${r.total_mo !== null ? r.total_mo.toLocaleString('fr-FR') : '—'} <span class="text-sm font-normal text-gray-500">Go</span></p>
+                            <p class="text-xl font-bold text-white">${r.total_kb !== null ? window.formatSize(r.total_kb) : '—'}</p>
                         </div>
                         <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
                             <p class="text-xs text-gray-500 mb-1">Variation vs précédent</p>
@@ -221,17 +221,17 @@
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-900/40 text-primary-300 border border-primary-800/50 text-[10px] font-bold">Nouveau</span>
                                 </td>
                                 <td class="px-4 py-2.5 font-mono text-gray-400 truncate max-w-[280px] cursor-help" data-tooltip="${a.chemin}">${a.chemin}</td>
-                                <td class="px-4 py-2.5 text-right text-gray-300 font-mono">${a.taille_mo} Mo</td>
+                                <td class="px-4 py-2.5 text-right text-gray-300 font-mono">${window.formatSize(a.taille_kb)}</td>
                             </tr>`;
                         } else {
-                            const sign = a.diff_mo >= 0 ? '+' : '';
-                            const color = a.diff_mo >= 0 ? 'text-red-400' : 'text-green-400';
+                            const sign = a.diff_kb > 0 ? '+' : '';
+                            const color = a.diff_kb > 0 ? 'text-red-400' : (a.diff_kb < 0 ? 'text-green-400' : 'text-gray-400');
                             html += `<tr class="hover:bg-gray-800/30">
                                 <td class="px-4 py-2.5">
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-300 border border-yellow-800/50 text-[10px] font-bold">Modifié</span>
                                 </td>
                                 <td class="px-4 py-2.5 font-mono text-gray-400 truncate max-w-[280px] cursor-help" data-tooltip="${a.chemin}">${a.chemin}</td>
-                                <td class="px-4 py-2.5 text-right font-mono font-semibold ${color}">${sign}${a.diff_mo} Mo</td>
+                                <td class="px-4 py-2.5 text-right font-mono font-semibold ${color}">${sign}${window.formatSize(a.diff_kb)}</td>
                             </tr>`;
                         }
                     });

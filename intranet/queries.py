@@ -157,7 +157,7 @@ def get_scan_details(id_scan: int) -> dict:
             {
                 "type": "nouveau",
                 "chemin": r["path"],
-                "taille_mo": round(r["size_kb"] / 1024, 1),
+                "taille_kb": r["size_kb"],
             }
             for r in cur.fetchall()
         ]
@@ -186,8 +186,8 @@ def get_scan_details(id_scan: int) -> dict:
                 {
                     "type": "modification",
                     "chemin": r["path"],
-                    "diff_mo": round(r["diff_kb"] / 1024, 1),
-                    "taille_mo": round(r["size_kb_cur"] / 1024, 1),
+                    "diff_kb": r["diff_kb"],
+                    "taille_kb": r["size_kb_cur"],
                 }
                 for r in cur.fetchall()
             ]
@@ -202,8 +202,8 @@ def get_scan_details(id_scan: int) -> dict:
             "scan": scan,
             "resume": {
                 "nb_dossiers": nb_dossiers,
-                "total_mo": round(total_kb / 1024 / 1024, 2),
-                "variation_mo": round(variation_kb / 1024 / 1024, 2) if variation_kb is not None else None,
+                "total_kb": total_kb,
+                "variation_kb": variation_kb,
             },
             "alertes": nouveaux + alertes_modifs,
         }
@@ -452,22 +452,23 @@ def get_historique_dossier(id_folder: int) -> dict:
         data = []
         history_table = []
 
-        prev_size = None
+        prev_size_kb = None
         for row in historique_raw:
             d_str = row["date_"].strftime("%d/%m/%Y %H:%M")
-            sz_mo = round(row["size_kb"] / 1024, 2)
+            sz_kb = row["size_kb"]
+            sz_mo = round(sz_kb / 1024, 2)
             
-            delta = 0.0
-            if prev_size is not None:
-                delta = round(sz_mo - prev_size, 2)
-            prev_size = sz_mo
+            delta_kb = 0
+            if prev_size_kb is not None:
+                delta_kb = sz_kb - prev_size_kb
+            prev_size_kb = sz_kb
 
             labels.append(d_str)
             data.append(sz_mo)
             history_table.append({
                 "date": d_str,
-                "size_mo": sz_mo,
-                "delta": delta
+                "size_kb": sz_kb,
+                "delta_kb": delta_kb
             })
         
         # Le tableau HTML affichera du plus récent au plus ancien

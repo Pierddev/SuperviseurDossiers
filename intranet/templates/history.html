@@ -79,7 +79,7 @@
                             {{ r.path.split('\\')|last if r.path.split('\\')|last != '' else r.path }}
                         </span>
                     </div>
-                    <span class="text-[10px] text-gray-600 flex-shrink-0">{{ (r.size_kb / 1024) | round(1) }} Mo</span>
+                    <span class="text-[10px] text-gray-600 flex-shrink-0">{{ r.size_kb | format_size }}</span>
                     {% if r.is_new %}<span class="text-[9px] bg-primary-900/80 text-primary-300 border border-primary-800 px-1 rounded">NEW</span>{% endif %}
                 </div>
                 <!-- Zone enfants injectée dynamiquement -->
@@ -257,7 +257,7 @@ function loadChildren(wrapEl, parentPath, depth) {
                         <div class="flex-1 min-w-0">
                             <span class="text-xs text-gray-300 block truncate font-mono folder-name-text">${name || item.path}</span>
                         </div>
-                        <span class="text-[10px] text-gray-600 flex-shrink-0">${sizeMo} Mo</span>
+                        <span class="text-[10px] text-gray-600 flex-shrink-0">${window.formatSize(item.size_kb)}</span>
                         ${item.is_new ? '<span class="text-[9px] bg-primary-900/80 text-primary-300 border border-primary-800 px-1 rounded">NEW</span>' : ''}
                     </div>
                     <div class="children-wrap" id="children-${item.id_folder}"></div>
@@ -296,14 +296,16 @@ function renderChart(data, path) {
 
     document.getElementById('chart-container').classList.remove('hidden');
 
-    const current = data.data[data.data.length - 1];
-    const delta   = current - data.data[0];
+    const current = data.history_table[0].size_kb;
+    const delta   = data.history_table[0].delta_kb;
     const deltaEl = document.getElementById('size-delta');
 
     document.getElementById('chart-title').textContent  = path;
-    document.getElementById('current-size').textContent = current.toFixed(1) + ' Mo';
+    document.getElementById('current-size').textContent = window.formatSize(current);
     document.getElementById('scan-count').textContent   = data.labels.length;
-    deltaEl.textContent  = (delta >= 0 ? '+' : '') + delta.toFixed(1) + ' Mo';
+    
+    const sign = delta > 0 ? '+' : '';
+    deltaEl.textContent  = sign + window.formatSize(delta);
     deltaEl.className    = 'text-lg font-bold mt-0.5 ' + (delta > 0 ? 'text-red-400' : delta < 0 ? 'text-green-400' : 'text-gray-400');
 
     if (chartInstance) chartInstance.destroy();
@@ -347,7 +349,7 @@ function renderChart(data, path) {
                     titleFont: { size: 11 },
                     bodyFont: { size: 13, weight: 'bold' },
                     padding: 10,
-                    callbacks: { label: ctx => ' ' + ctx.parsed.y.toFixed(2) + ' Mo' }
+                    callbacks: { label: ctx => ' ' + ctx.parsed.y + ' Mo' }
                 }
             },
             scales: {
@@ -373,18 +375,17 @@ function renderChart(data, path) {
             tr.className = "hover:bg-gray-800/20";
             
             let deltaHtml = '<span class="text-gray-500">-</span>';
-            if (r.delta > 0) {
-                deltaHtml = `<span class="text-red-400 font-medium">+${r.delta.toFixed(1)} Mo</span>`;
-            } else if (r.delta < 0) {
-                deltaHtml = `<span class="text-green-400 font-medium">${r.delta.toFixed(1)} Mo</span>`;
-            } else if (r.delta === 0) {
-                // Première valeur ou aucun changement
-                deltaHtml = `<span class="text-gray-500 font-medium">0.0 Mo</span>`;
+            if (r.delta_kb > 0) {
+                deltaHtml = `<span class="text-red-400 font-medium">+${window.formatSize(r.delta_kb)}</span>`;
+            } else if (r.delta_kb < 0) {
+                deltaHtml = `<span class="text-green-400 font-medium">${window.formatSize(r.delta_kb)}</span>`;
+            } else if (r.delta_kb === 0) {
+                deltaHtml = `<span class="text-gray-500 font-medium">${window.formatSize(0)}</span>`;
             }
             
             tr.innerHTML = `
                 <td class="px-6 py-3 whitespace-nowrap text-gray-300 font-mono">${r.date}</td>
-                <td class="px-6 py-3 whitespace-nowrap text-right font-mono">${r.size_mo.toFixed(1)} Mo</td>
+                <td class="px-6 py-3 whitespace-nowrap text-right font-mono">${window.formatSize(r.size_kb)}</td>
                 <td class="px-6 py-3 whitespace-nowrap text-right font-mono">${deltaHtml}</td>
             `;
             tbody.appendChild(tr);

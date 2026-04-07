@@ -157,6 +157,27 @@
         </main>
     </div>
 
+    <script>
+        window.formatSize = function(kb) {
+            if (kb === null || kb === undefined) return "—";
+            const units = ['Ko', 'Mo', 'Go', 'To', 'Po'];
+            let size = parseFloat(kb);
+            let isNegative = size < 0;
+            let absSize = Math.abs(size);
+            let unitIdx = 0;
+            while (absSize >= 1024 && unitIdx < units.length - 1) {
+                absSize /= 1024;
+                unitIdx++;
+            }
+            let res = "";
+            if (unitIdx >= 2) res = absSize.toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ' + units[unitIdx];
+            else if (unitIdx === 1) res = absSize.toLocaleString('fr-FR', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' ' + units[unitIdx];
+            else res = Math.round(absSize) + ' ' + units[unitIdx];
+            
+            return isNegative ? '-' + res : res;
+        };
+    </script>
+
     {% block scripts %}{% endblock %}
 </body>
 </html>

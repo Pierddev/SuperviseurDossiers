@@ -131,7 +131,16 @@ if __name__ == "__main__":
     else:
         # Mode planifié (comportement par défaut)
         heure_scan = os.getenv("HEURE_SCAN", "17:30")
-        schedule.every().day.at(heure_scan).do(scanner)
+
+        # En mode Debug Flask, le reloader lance 2 processus (parent + enfant).
+        # On ne planifie le scan que dans le processus enfant pour éviter les doublons.
+        _is_reloader_parent = (
+            os.getenv("FLASK_DEBUG", "0") == "1"
+            and os.environ.get("WERKZEUG_RUN_MAIN") != "true"
+        )
+
+        if not _is_reloader_parent:
+            schedule.every().day.at(heure_scan).do(scanner)
 
         delai_verification = int(os.getenv("DELAI_VERIFICATION", 300))
 
@@ -213,15 +222,16 @@ if __name__ == "__main__":
                 
                 if debug_mode:
                     # En mode debug, Flask doit tourner sur le thread principal pour le reloader
-                    # On lance donc l'ordonnanceur de scan dans un thread séparé
-                    def lancer_ordonnanceur():
-                        print("⏱️  Ordonnanceur de scan démarré en arrière-plan")
-                        while True:
-                            schedule.run_pending()
-                            time.sleep(delai_verification)
-                            
-                    thread_scan = threading.Thread(target=lancer_ordonnanceur, daemon=True)
-                    thread_scan.start()
+                    # On lance l'ordonnanceur uniquement dans le processus enfant
+                    if not _is_reloader_parent:
+                        def lancer_ordonnanceur():
+                            print("⏱️  Ordonnanceur de scan démarré en arrière-plan")
+                            while True:
+                                schedule.run_pending()
+                                time.sleep(delai_verification)
+                                
+                        thread_scan = threading.Thread(target=lancer_ordonnanceur, daemon=True)
+                        thread_scan.start()
                     
                     # On lance Flask en bloquant (avec reloader actif)
                     # Note : Cela ne s'exécutera que si INTRANET_ENABLED=1

@@ -40,6 +40,32 @@ def creer_app() -> Flask:
     app.config["SECRET_KEY"] = os.getenv("INTRA_SECRET_KEY", "change-me-in-production")
     app.config["TEMPLATES_AUTO_RELOAD"] = True
 
+    @app.template_filter("format_size")
+    def format_size(kb: float | int | None) -> str:
+        """Formate une taille en Ko vers l'unité la plus appropriée (Ko, Mo, Go, To)."""
+        if kb is None:
+            return "—"
+        units = ['Ko', 'Mo', 'Go', 'To', 'Po']
+        size = float(kb)
+        is_negative = size < 0
+        abs_size = abs(size)
+        unit_idx = 0
+        while abs_size >= 1024 and unit_idx < len(units) - 1:
+            abs_size /= 1024
+            unit_idx += 1
+        
+        # Formatage avec le signe original
+        final_val = abs_size
+        if unit_idx >= 2:
+            res = f"{final_val:.2f} {units[unit_idx]}"
+        elif unit_idx == 1:
+            res = f"{final_val:.1f} {units[unit_idx]}"
+        else:
+            res = f"{int(final_val)} {units[unit_idx]}"
+            
+        res = res.replace('.', ',')
+        return f"-{res}" if is_negative else res
+
     # --- Flask-Login ---
     login_manager = LoginManager()
     login_manager.init_app(app)
