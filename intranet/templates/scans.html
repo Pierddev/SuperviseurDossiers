@@ -1,0 +1,308 @@
+{% extends "layout.html" %}
+
+{% block title %}Historique des scans — SuperviseurDossiers{% endblock %}
+
+{% block content %}
+<div class="p-8">
+    <!-- En-tête -->
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-white">Historique des scans</h1>
+        <p class="text-gray-400 text-sm mt-1 flex items-center gap-2">
+            Consultez le journal des vérifications — 
+            <span class="text-primary-400/80 flex items-center gap-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Cliquez sur une ligne pour voir les détails
+            </span>
+        </p>
+    </div>
+
+    <!-- Carte du Tableau -->
+    <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-xl">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-300">
+                <thead class="text-xs uppercase bg-gray-800/50 text-gray-400 border-b border-gray-800">
+                    <tr>
+                        <th scope="col" class="px-6 py-4 font-semibold">ID</th>
+                        <th scope="col" class="px-6 py-4 font-semibold">Statut</th>
+                        <th scope="col" class="px-6 py-4 font-semibold">Date de Lancement</th>
+                        <th scope="col" class="px-6 py-4 font-semibold">Durée</th>
+                        <th scope="col" class="px-6 py-4 font-semibold text-right">Dossiers traités</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-800">
+                    {% for scan in scans %}
+                        <tr class="hover:bg-gray-800/50 transition-colors cursor-pointer clickable-row group" 
+                            data-scan-id="{{ scan.id_scan }}"
+                            title="Cliquez pour voir les détails du scan #{{ scan.id_scan }}">
+                            <!-- ID -->
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="text-xs font-mono text-gray-500 group-hover:text-primary-400 transition-colors">#{{ scan.id_scan }}</span>
+                            </td>
+                        
+                        <!-- Statut -->
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% set status = scan.status %}
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium
+                                {% if status == 'completed' %}bg-green-900/40 text-green-300 border border-green-800/50
+                                {% elif status == 'in_progress' %}bg-yellow-900/40 text-yellow-300 border border-yellow-800/50
+                                {% else %}bg-red-900/40 text-red-300 border border-red-800/50
+                                {% endif %}">
+                                <span class="w-1.5 h-1.5 rounded-full
+                                    {% if status == 'completed' %}bg-green-400
+                                    {% elif status == 'in_progress' %}bg-yellow-400 animate-pulse
+                                    {% else %}bg-red-400
+                                    {% endif %}"></span>
+                                {% if status == 'completed' %}Terminé
+                                {% elif status == 'in_progress' %}En cours
+                                {% else %}Échec
+                                {% endif %}
+                            </span>
+                        </td>
+                        
+                        <!-- Date -->
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-300">
+                            {{ scan.date_.strftime('%d/%m/%Y à %H:%M') if scan.date_ else '—' }}
+                        </td>
+                        
+                        <!-- Durée -->
+                        <td class="px-6 py-4 whitespace-nowrap text-gray-400 font-mono text-xs">
+                            {% if scan.duration_sec is not none %}
+                                {% if scan.duration_sec < 60 %}
+                                    {{ scan.duration_sec }}s
+                                {% else %}
+                                    {{ scan.duration_sec // 60 }}m {{ scan.duration_sec % 60 }}s
+                                {% endif %}
+                            {% else %}
+                                <span class="opacity-30">—</span>
+                            {% endif %}
+                        </td>
+                        
+                        <!-- Dossiers -->
+                        <td class="px-6 py-4 whitespace-nowrap text-right">
+                            {% if scan.folders_updated is not none %}
+                                <span class="text-gray-200">{{ "{:,}".format(scan.folders_updated).replace(",", " ") }}</span> 
+                                <span class="text-[10px] text-gray-500 uppercase ml-1">dossiers</span>
+                            {% else %}
+                                <span class="opacity-30">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                            Aucun historique disponible.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════ MODALE DÉTAILS DU SCAN ══════════════ -->
+<div id="scan-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+    <!-- Fond sombre -->
+    <div id="modal-backdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+
+    <!-- Carte modale -->
+    <div class="relative z-10 bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800 flex-shrink-0">
+            <h2 class="text-base font-bold text-white flex items-center gap-2">
+                <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <span id="modal-title">Détails du scan</span>
+            </h2>
+            <button id="modal-close" class="text-gray-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-gray-800">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Corps scrollable -->
+        <div id="modal-body" class="overflow-y-auto flex-1 px-6 py-5 space-y-6">
+            <!-- Contenu injecté par JS -->
+            <div class="text-center py-8 text-gray-500 text-sm" id="modal-loading">
+                Chargement…
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const modal = document.getElementById('scan-modal');
+    const modalBody = document.getElementById('modal-body');
+    const modalTitle = document.getElementById('modal-title');
+
+    function fmt(n) {
+        return n === null || n === undefined
+            ? '—'
+            : n.toLocaleString('fr-FR', { minimumFractionDigits: 0 });
+    }
+
+    function openModal(scanId) {
+        modalTitle.textContent = `Détails du scan #${scanId}`;
+        modalBody.innerHTML = '<div class="text-center py-8 text-gray-500 text-sm">Chargement…</div>';
+        modal.classList.remove('hidden');
+
+        fetch(`/api/scan-details/${scanId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    modalBody.innerHTML = `<p class="text-red-400 text-sm">${data.error}</p>`;
+                    return;
+                }
+
+                const r = data.resume;
+                const scan = data.scan;
+                const alertes = data.alertes;
+
+                // Variation
+                let variationHtml = '<span class="text-gray-500">—</span>';
+                if (r.variation_kb !== null && r.variation_kb !== undefined) {
+                    const sign = r.variation_kb > 0 ? '+' : '';
+                    const color = r.variation_kb > 0 ? 'text-red-400' : (r.variation_kb < 0 ? 'text-green-400' : 'text-gray-400');
+                    variationHtml = `<span class="${color} font-semibold">${sign}${window.formatSize(r.variation_kb)}</span>`;
+                }
+
+                // ── Résumé statistique ──
+                let html = `
+                <div>
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Résumé du cycle</h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
+                            <p class="text-xs text-gray-500 mb-1">Dossiers analysés</p>
+                            <p class="text-xl font-bold text-white">${fmt(r.nb_dossiers)}</p>
+                        </div>
+                        <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
+                            <p class="text-xs text-gray-500 mb-1">Volume total</p>
+                            <p class="text-xl font-bold text-white">${r.total_kb !== null ? window.formatSize(r.total_kb) : '—'}</p>
+                        </div>
+                        <div class="bg-gray-800/50 rounded-xl p-4 border border-gray-700/50">
+                            <p class="text-xs text-gray-500 mb-1">Variation vs précédent</p>
+                            <p class="text-xl font-bold">${variationHtml}</p>
+                        </div>
+                    </div>
+                </div>`;
+
+                // ── Alertes ──
+                html += `<div>
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">
+                        Alertes déclenchées
+                        <span class="ml-2 text-[10px] bg-gray-800 text-gray-400 border border-gray-700 rounded px-1.5 py-0.5 normal-case font-normal">${alertes.length}</span>
+                    </h3>`;
+
+                if (alertes.length === 0) {
+                    html += `<p class="text-sm text-gray-500 py-4 text-center">Aucune alerte pour ce scan.</p>`;
+                } else {
+                    html += `<div class="rounded-xl border border-gray-700/50 overflow-hidden">
+                        <table class="w-full text-xs text-gray-300">
+                            <thead class="bg-gray-800/60 text-gray-500 uppercase text-[10px]">
+                                <tr>
+                                    <th class="px-4 py-2.5 text-left font-semibold">Type</th>
+                                    <th class="px-4 py-2.5 text-left font-semibold">Chemin</th>
+                                    <th class="px-4 py-2.5 text-right font-semibold">Détail</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-800">`;
+
+                    alertes.forEach(a => {
+                        if (a.type === 'nouveau') {
+                            html += `<tr class="hover:bg-gray-800/30">
+                                <td class="px-4 py-2.5">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-900/40 text-primary-300 border border-primary-800/50 text-[10px] font-bold">Nouveau</span>
+                                </td>
+                                <td class="px-4 py-2.5 font-mono text-gray-400 truncate max-w-[280px] cursor-help" data-tooltip="${a.chemin}">${a.chemin}</td>
+                                <td class="px-4 py-2.5 text-right text-gray-300 font-mono">${window.formatSize(a.taille_kb)}</td>
+                            </tr>`;
+                        } else {
+                            const sign = a.diff_kb > 0 ? '+' : '';
+                            const color = a.diff_kb > 0 ? 'text-red-400' : (a.diff_kb < 0 ? 'text-green-400' : 'text-gray-400');
+                            html += `<tr class="hover:bg-gray-800/30">
+                                <td class="px-4 py-2.5">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-300 border border-yellow-800/50 text-[10px] font-bold">Modifié</span>
+                                </td>
+                                <td class="px-4 py-2.5 font-mono text-gray-400 truncate max-w-[280px] cursor-help" data-tooltip="${a.chemin}">${a.chemin}</td>
+                                <td class="px-4 py-2.5 text-right font-mono font-semibold ${color}">${sign}${window.formatSize(a.diff_kb)}</td>
+                            </tr>`;
+                        }
+                    });
+
+                    html += `</tbody></table></div>`;
+                }
+                html += `</div>`;
+
+                modalBody.innerHTML = html;
+            })
+            // Après injection du HTML, active les tooltips sur les cellules de chemin
+            .then(() => initTooltips())
+            .catch(() => {
+                modalBody.innerHTML = '<p class="text-red-400 text-sm text-center py-6">Erreur lors du chargement des données.</p>';
+            });
+    }
+
+    function closeModal() {
+        modal.classList.add('hidden');
+        tooltip.style.display = 'none';
+    }
+
+    // Clic sur les lignes du tableau pour ouvrir la modale
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', () => openModal(row.dataset.scanId));
+    });
+
+    // Fermeture
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+    document.getElementById('modal-backdrop').addEventListener('click', closeModal);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    // ── Tooltip flottant pour les chemins ──────────────────────────────
+    const tooltip = document.createElement('div');
+    tooltip.id = 'path-tooltip';
+    tooltip.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;display:none;' +
+        'background:#1f2937;color:#f3f4f6;font-family:monospace;font-size:11px;' +
+        'padding:6px 10px;border-radius:8px;border:1px solid #374151;' +
+        'box-shadow:0 4px 20px rgba(0,0,0,0.5);max-width:520px;word-break:break-all;line-height:1.5;';
+    document.body.appendChild(tooltip);
+
+    function initTooltips() {
+        // Délégation d'événement sur modal-body (contenu dynamique)
+        modalBody.addEventListener('mousemove', onTooltipMove);
+        modalBody.addEventListener('mouseleave', onTooltipHide);
+    }
+
+    function onTooltipMove(e) {
+        const cell = e.target.closest('[data-tooltip]');
+        if (!cell) { tooltip.style.display = 'none'; return; }
+
+        tooltip.textContent = cell.dataset.tooltip;
+        tooltip.style.display = 'block';
+
+        // Positionnement : au-dessus du curseur, décalé
+        const GAP = 12;
+        let x = e.clientX + GAP;
+        let y = e.clientY - tooltip.offsetHeight - GAP;
+
+        // Correction si sort à droite
+        if (x + tooltip.offsetWidth > window.innerWidth - 8)
+            x = e.clientX - tooltip.offsetWidth - GAP;
+        // Correction si sort en haut
+        if (y < 8) y = e.clientY + GAP;
+
+        tooltip.style.left = x + 'px';
+        tooltip.style.top  = y + 'px';
+    }
+
+    function onTooltipHide() {
+        tooltip.style.display = 'none';
+    }
+</script>
+{% endblock %}
