@@ -258,7 +258,7 @@ def get_stats_dashboard() -> dict:
             cur.execute(
                 """
                 SELECT
-                    f.path,
+                    f.id_folder, f.path,
                     s1.size_kb AS size_actuel_kb,
                     s2.size_kb AS size_precedent_kb,
                     (s1.size_kb - s2.size_kb) AS diff_kb

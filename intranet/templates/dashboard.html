@@ -101,7 +101,8 @@
         {% if stats.top_changements %}
         <div class="divide-y divide-gray-800">
             {% for dossier in stats.top_changements %}
-            <div class="px-6 py-4 flex items-center gap-4 hover:bg-gray-800/50 transition-colors">
+            <a href="{{ url_for('history', id=dossier.id_folder, path=dossier.path) }}" 
+               class="px-6 py-4 flex items-center gap-4 hover:bg-gray-800/50 transition-colors group/row">
                 <!-- Icône dossier -->
                 <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0
                     {% if dossier.diff_kb > 0 %}bg-red-900/30{% else %}bg-green-900/30{% endif %}">
@@ -113,11 +114,11 @@
 
                 <!-- Chemin avec tooltip personnalisé -->
                 <div class="flex-1 min-w-0 relative group">
-                    <p class="text-sm text-gray-200 font-mono truncate cursor-help">
+                    <p class="text-sm text-gray-200 font-mono truncate">
                         {{ dossier.path }}
                     </p>
                     <!-- Tooltip Tailwind -->
-                    <div class="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                    <div class="absolute left-0 bottom-full mb-2 hidden group-hover/row:block z-50 animate-in fade-in slide-in-from-bottom-1 duration-200">
                         <div class="bg-gray-800 text-gray-100 text-xs font-mono py-1.5 px-3 rounded-lg shadow-xl shadow-black/50 border border-gray-700 max-w-lg break-all">
                             {{ dossier.path }}
                         </div>
@@ -134,8 +135,9 @@
                         {% if dossier.diff_kb > 0 %}text-red-400{% else %}text-green-400{% endif %}">
                         {% if dossier.diff_kb > 0 %}+{% endif %}{{ dossier.diff_kb | format_size }}
                     </span>
+                    <div class="text-[10px] text-gray-600 mt-0.5 group-hover/row:text-primary-500 transition-colors">Voir historique →</div>
                 </div>
-            </div>
+            </a>
             {% endfor %}
         </div>
         {% else %}

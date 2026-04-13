@@ -258,7 +258,6 @@ function loadChildren(wrapEl, parentPath, depth) {
             }
             items.forEach(item => {
                 const name   = item.path.split('\\').pop();
-                const sizeMo = (item.size_kb / 1024).toFixed(1);
                 const indent = 8 + depth * 16;
 
                 const node = document.createElement('div');
@@ -298,6 +297,8 @@ function loadChildren(wrapEl, parentPath, depth) {
             wrapEl.innerHTML = '<div class="text-[10px] text-red-500 px-10 py-1">Erreur de chargement</div>';
         });
 }
+
+
 
 // ── Graphique Chart.js ────────────────────────────────────────────────
 function loadChart(id, path) {
@@ -577,6 +578,15 @@ sidebarEl.addEventListener('mousemove', function(e) {
 
 sidebarEl.addEventListener('mouseout', function(e) {
     globalTooltip.style.display = 'none';
+});
+// --- Gestion du dossier passé en URL (ex: via dashboard) ---
+window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const folderId = params.get('id');
+    const folderPath = params.get('path');
+    if (folderId && folderPath) {
+        loadChart(folderId, folderPath);
+    }
 });
 </script>
 {% endblock %}
