@@ -31,11 +31,19 @@ def creer_app() -> Flask:
     """
     Factory Flask : crée et configure l'application Intranet.
     """
+    # Charger le .env s'il ne l'est pas déjà (utile si lancé sans main.py)
+    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+    if os.path.exists(env_path):
+        dotenv.load_dotenv(env_path)
+
     app = Flask(
         __name__,
         template_folder=os.path.join(os.path.dirname(__file__), "templates"),
         static_folder=os.path.join(os.path.dirname(__file__), "static"),
     )
+
+    # Injection globale de la version
+    app.jinja_env.globals['DS_VERSION'] = os.getenv("DS_VERSION", "0.0.0")
 
     app.config["SECRET_KEY"] = os.getenv("INTRA_SECRET_KEY", "change-me-in-production")
     app.config["TEMPLATES_AUTO_RELOAD"] = True
