@@ -484,3 +484,53 @@ def get_historique_dossier(id_folder: int) -> dict:
         return {}
     finally:
         conn.close()
+
+
+def rechercher_dossiers(query: str, limit: int = 30) -> list[dict]:
+    """
+    Recherche des dossiers dont le chemin contient le texte donné (insensible à la casse).
+    Retourne les résultats avec leur taille au dernier scan.
+    """
+    if not query or len(query) < 2:
+        return []
+
+    conn = get_connexion()
+    if not conn:
+        return []
+    try:
+        cur = conn.cursor(dictionary=True)
+        id_scan = _get_id_dernier_scan(cur)
+
+        # Recherche LIKE sur le path — échappe les caractères spéciaux SQL
+        # Le backslash doit être échappé EN PREMIER (c'est le char d'échappement de LIKE)
+        search_term = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        search_term = f"%{search_term}%"
+
+        cur.execute(
+            """
+            SELECT
+                f.id_folder, f.path, f.is_new,
+                COALESCE(sz.size_kb, 0) AS size_kb
+            FROM folders f
+            LEFT JOIN sizes sz
+                ON f.id_folder = sz.id_folder AND sz.id_scan = %s
+            WHERE f.path LIKE %s
+            ORDER BY LENGTH(f.path) ASC, f.path ASC
+            LIMIT %s
+            """,
+            (id_scan, search_term, limit),
+        )
+        rows = cur.fetchall()
+        return [
+            {
+                "id_folder": row["id_folder"],
+                "path": row["path"],
+                "is_new": bool(row.get("is_new", 0)),
+                "size_kb": row.get("size_kb", 0),
+            }
+            for row in rows
+        ]
+    except mysql.connector.Error:
+        return []
+    finally:
+        conn.close()

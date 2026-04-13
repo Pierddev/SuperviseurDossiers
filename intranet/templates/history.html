@@ -22,6 +22,23 @@
     #folder-tree::-webkit-scrollbar { width: 4px; }
     #folder-tree::-webkit-scrollbar-track { background: transparent; }
     #folder-tree::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 2px; }
+
+    /* Search dropdown */
+    #search-results {
+        max-height: 320px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #4f46e5 transparent;
+    }
+    #search-results::-webkit-scrollbar { width: 4px; }
+    #search-results::-webkit-scrollbar-track { background: transparent; }
+    #search-results::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 2px; }
+    .search-result-item {
+        cursor: pointer;
+        transition: background 0.1s ease;
+    }
+    .search-result-item:hover { background: rgba(99,102,241,.12); }
+    .search-highlight { color: #a5b4fc; font-weight: 600; }
 </style>
 {% endblock %}
 
@@ -33,15 +50,26 @@
         <div class="p-4 border-b border-gray-800">
             <h2 class="text-sm font-semibold text-white mb-2">Arborescence</h2>
             <div class="relative">
-                <input type="text" id="search-input" placeholder="Rechercher…"
+                <input type="text" id="search-input" placeholder="Rechercher un chemin…"
+                    autocomplete="off"
                     class="w-full bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded-lg
-                           pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-600
+                           pl-8 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-primary-600
                            placeholder-gray-500 transition-all">
                 <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500"
                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
+                <!-- Bouton clear -->
+                <button id="search-clear" class="absolute right-2 top-1/2 -translate-y-1/2 hidden text-gray-500 hover:text-gray-300 transition-colors"
+                        type="button">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <!-- Dropdown résultats de recherche -->
+            <div id="search-results" class="hidden mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden">
             </div>
         </div>
 
@@ -395,14 +423,109 @@ function renderChart(data, path) {
     }
 }
 
-// ── Recherche en temps réel ───────────────────────────────────────────
-document.getElementById('search-input').addEventListener('input', function () {
-    const q = this.value.toLowerCase().trim();
-    // En cas de recherche vide, on réouvre tout
-    document.querySelectorAll('#folder-tree .folder-item').forEach(el => {
-        const path = (el.dataset.path || '').toLowerCase();
-        el.closest('.folder-node').style.display = (!q || path.includes(q)) ? '' : 'none';
+// ── Recherche via API avec debounce ───────────────────────────────────
+const searchInput     = document.getElementById('search-input');
+const searchResults   = document.getElementById('search-results');
+const searchClear     = document.getElementById('search-clear');
+const folderTree      = document.getElementById('folder-tree');
+let   searchTimer     = null;
+let   searchAbort     = null;
+
+function highlightMatch(path, query) {
+    // Échappe les caractères spéciaux regex dans la query
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp('(' + escaped + ')', 'gi');
+    // Échappe le HTML du path d'abord, puis applique le highlight
+    const safe = path.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return safe.replace(regex, '<span class="search-highlight">$1</span>');
+}
+
+function showSearchResults(items, query) {
+    if (!items || items.length === 0) {
+        searchResults.innerHTML = '<div class="text-[11px] text-gray-500 px-3 py-3 text-center">Aucun résultat</div>';
+        searchResults.classList.remove('hidden');
+        folderTree.classList.add('hidden');
+        return;
+    }
+    searchResults.innerHTML = items.map(item => {
+        const highlighted = highlightMatch(item.path, query);
+        const size = window.formatSize(item.size_kb);
+        return `
+            <div class="search-result-item px-3 py-2 border-b border-gray-700/50 flex items-center gap-2"
+                 data-id="${item.id_folder}" data-path="${item.path.replace(/"/g, '&quot;')}">
+                <svg class="w-3.5 h-3.5 flex-shrink-0 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+                <div class="flex-1 min-w-0">
+                    <span class="text-[11px] text-gray-300 font-mono block truncate">${highlighted}</span>
+                </div>
+                <span class="text-[10px] text-gray-600 flex-shrink-0">${size}</span>
+            </div>
+        `;
+    }).join('');
+    searchResults.classList.remove('hidden');
+    folderTree.classList.add('hidden');
+
+    // Clic sur un résultat → charger le graphique
+    searchResults.querySelectorAll('.search-result-item').forEach(el => {
+        el.addEventListener('click', () => {
+            const id   = el.dataset.id;
+            const path = el.dataset.path;
+            loadChart(id, path);
+            clearSearch();
+        });
     });
+}
+
+function clearSearch() {
+    searchInput.value = '';
+    searchResults.classList.add('hidden');
+    searchResults.innerHTML = '';
+    folderTree.classList.remove('hidden');
+    searchClear.classList.add('hidden');
+}
+
+searchInput.addEventListener('input', function () {
+    const q = this.value.trim();
+
+    // Affiche/cache le bouton clear
+    searchClear.classList.toggle('hidden', q.length === 0);
+
+    // Annule la requête précédente
+    if (searchTimer) clearTimeout(searchTimer);
+    if (searchAbort) searchAbort.abort();
+
+    if (q.length < 2) {
+        searchResults.classList.add('hidden');
+        folderTree.classList.remove('hidden');
+        return;
+    }
+
+    // Debounce 300ms
+    searchTimer = setTimeout(() => {
+        searchAbort = new AbortController();
+        // Indicateur de chargement
+        searchResults.innerHTML = '<div class="text-[11px] text-gray-500 px-3 py-3 text-center animate-pulse">Recherche…</div>';
+        searchResults.classList.remove('hidden');
+        folderTree.classList.add('hidden');
+
+        fetch('/api/recherche?q=' + encodeURIComponent(q), { signal: searchAbort.signal })
+            .then(r => r.json())
+            .then(items => showSearchResults(items, q))
+            .catch(err => {
+                if (err.name !== 'AbortError') {
+                    searchResults.innerHTML = '<div class="text-[11px] text-red-400 px-3 py-3 text-center">Erreur de recherche</div>';
+                }
+            });
+    }, 300);
+});
+
+searchClear.addEventListener('click', clearSearch);
+
+// Ferme la recherche avec Échap
+searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') clearSearch();
 });
 
 // ── Redimensionnement du panneau latéral ────────────────────────────
@@ -432,10 +555,11 @@ document.addEventListener('mouseup', function() {
 });
 // ── Tooltip Global de survol (évite d'être coupé par overflow) ──────
 const globalTooltip = document.getElementById('global-tooltip');
-const tooltipInner = globalTooltip.querySelector('div');
+const tooltipInner  = globalTooltip.querySelector('div');
+const sidebarEl     = document.getElementById('sidebar');
 
-document.getElementById('folder-tree').addEventListener('mouseover', function(e) {
-    const item = e.target.closest('.folder-item');
+sidebarEl.addEventListener('mouseover', function(e) {
+    const item = e.target.closest('.folder-item, .search-result-item');
     if (!item) return;
     const path = item.dataset.path;
     if (path) {
@@ -444,15 +568,14 @@ document.getElementById('folder-tree').addEventListener('mouseover', function(e)
     }
 });
 
-document.getElementById('folder-tree').addEventListener('mousemove', function(e) {
+sidebarEl.addEventListener('mousemove', function(e) {
     if (globalTooltip.style.display === 'block') {
-        // Positionne légèrement en bas à droite du curseur
         globalTooltip.style.left = (e.clientX + 15) + 'px';
         globalTooltip.style.top = (e.clientY + 15) + 'px';
     }
 });
 
-document.getElementById('folder-tree').addEventListener('mouseout', function(e) {
+sidebarEl.addEventListener('mouseout', function(e) {
     globalTooltip.style.display = 'none';
 });
 </script>

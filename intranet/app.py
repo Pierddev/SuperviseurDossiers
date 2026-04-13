@@ -159,6 +159,16 @@ def creer_app() -> Flask:
         data = get_historique_dossier(id_folder)
         return jsonify(data)
 
+    @app.route("/api/recherche")
+    @login_required
+    def api_recherche():
+        from flask import jsonify, request as req
+        from intranet.queries import rechercher_dossiers
+        q = req.args.get("q", "").strip()
+        if len(q) < 2:
+            return jsonify([])
+        return jsonify(rechercher_dossiers(q))
+
     @app.route("/api/scan-details/<int:id_scan>")
     @login_required
     def api_scan_details(id_scan: int):
