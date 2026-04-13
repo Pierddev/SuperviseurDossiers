@@ -29,10 +29,12 @@ CREATE TABLE folders (
 );
 
 CREATE TABLE scans (
-    id_scan    BIGINT       NOT NULL AUTO_INCREMENT,
-    date_      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    date_end   TIMESTAMP    NULL     DEFAULT NULL,
-    status     VARCHAR(20)  NOT NULL DEFAULT 'in_progress',
+    id_scan       BIGINT       NOT NULL AUTO_INCREMENT,
+    date_         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    date_end      TIMESTAMP    NULL     DEFAULT NULL,
+    status        VARCHAR(20)  NOT NULL DEFAULT 'in_progress',
+    total_folders INT          NULL     DEFAULT NULL,
+    total_size_kb BIGINT       NULL     DEFAULT NULL,
     PRIMARY KEY (id_scan)
 );
 

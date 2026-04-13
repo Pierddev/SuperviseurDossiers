@@ -12,6 +12,7 @@ from db import (
     connecter_base_de_donnees,
     creer_scan,
     deconnecter_base_de_donnees,
+    enregistrer_totaux_scan,
     terminer_scan,
     traiter_dossiers_en_lot,
 )
@@ -42,6 +43,8 @@ def scanner() -> None:
         dossiers_modifies = []
         taille_totale_scan = 0
         total_changement_taille = 0
+        total_dossiers_scannes = 0
+        taille_totale_racines_ko = 0
 
         for chemin_racine in chemins_racines:
             chemin_racine = chemin_racine.strip()
@@ -60,6 +63,16 @@ def scanner() -> None:
             dossiers_modifies.extend(modifies)
             taille_totale_scan += taille_scan
             total_changement_taille += changement_racine
+            total_dossiers_scannes += len(dossiers_avec_tailles)
+            # Taille de la racine uniquement (inclut déjà ses enfants)
+            taille_totale_racines_ko += round(
+                dossiers_avec_tailles.get(chemin_racine, 0) / 1024
+            )
+
+        # Enregistrer les totaux corrects dans la table scans
+        enregistrer_totaux_scan(
+            connexion_mysql, id_scan, total_dossiers_scannes, taille_totale_racines_ko
+        )
 
         # Filtre les dossiers parents redondants pour la notification
         nouveaux_dossiers = filtrer_dossiers_redondants(nouveaux_dossiers)

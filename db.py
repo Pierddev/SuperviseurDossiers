@@ -129,6 +129,29 @@ def terminer_scan(
         envoyer_notif_teams(f"Erreur lors de la terminaison du scan : {err}")
 
 
+def enregistrer_totaux_scan(
+    connexion_mysql: mysql.connector.MySQLConnection,
+    id_scan: int,
+    total_folders: int,
+    total_size_kb: int,
+) -> None:
+    """
+    Enregistre les totaux globaux du scan dans la table scans.
+    total_size_kb doit être la somme des tailles des chemins racines uniquement
+    (pas la somme de tous les dossiers, pour éviter le double comptage).
+    """
+    try:
+        curseur = connexion_mysql.cursor()
+        curseur.execute(
+            "UPDATE scans SET total_folders = %s, total_size_kb = %s WHERE id_scan = %s",
+            (total_folders, total_size_kb, id_scan),
+        )
+        connexion_mysql.commit()
+        curseur.close()
+    except mysql.connector.Error as err:
+        envoyer_notif_teams(f"Erreur lors de l'enregistrement des totaux : {err}")
+
+
 def traiter_dossiers_en_lot(
     connexion_mysql: mysql.connector.MySQLConnection,
     dossiers_avec_tailles: dict[str, int],
@@ -203,11 +226,12 @@ def traiter_dossiers_en_lot(
                     (id_dossier,),
                 )
 
-            # Insérer la taille dans la table sizes pour le scan en cours
-            curseur.execute(
-                "INSERT INTO sizes (id_scan, id_folder, size_kb) VALUES (%s, %s, %s)",
-                (id_scan, id_dossier, taille_en_ko),
-            )
+            # N'insérer dans sizes que si la taille a changé
+            if taille_en_ko != int(taille_precedente):
+                curseur.execute(
+                    "INSERT INTO sizes (id_scan, id_folder, size_kb) VALUES (%s, %s, %s)",
+                    (id_scan, id_dossier, taille_en_ko),
+                )
 
             # Convertir en Mo pour la comparaison avec le seuil (qui est en Mo)
             diff_mo = round(diff_ko / 1024)

@@ -58,10 +58,8 @@ def get_scans_history(limit: int = 50) -> list[dict]:
                 sc.date_end, 
                 sc.status,
                 TIMESTAMPDIFF(SECOND, sc.date_, sc.date_end) AS duration_sec,
-                COUNT(sz.id_folder) AS folders_updated
+                sc.total_folders AS folders_updated
             FROM scans sc
-            LEFT JOIN sizes sz ON sc.id_scan = sz.id_scan
-            GROUP BY sc.id_scan
             ORDER BY sc.date_ DESC 
             LIMIT %s
             """,
@@ -86,10 +84,11 @@ def get_scan_details(id_scan: int) -> dict:
     try:
         cur = conn.cursor(dictionary=True)
 
-        # 1. Infos du scan
+        # 1. Infos du scan (inclut les totaux)
         cur.execute(
             """
             SELECT id_scan, date_, date_end, status,
+                   total_folders, total_size_kb,
                    TIMESTAMPDIFF(SECOND, date_, date_end) AS duration_sec
             FROM scans WHERE id_scan = %s
             """,
@@ -99,17 +98,9 @@ def get_scan_details(id_scan: int) -> dict:
         if not scan:
             return {}
 
-        # 2. Résumé : nb dossiers analysés + volume total pour ce scan
-        cur.execute(
-            """
-            SELECT COUNT(*) AS nb_dossiers, SUM(size_kb) AS total_kb
-            FROM sizes WHERE id_scan = %s
-            """,
-            (id_scan,),
-        )
-        resume_row = cur.fetchone()
-        nb_dossiers = resume_row["nb_dossiers"] or 0
-        total_kb = resume_row["total_kb"] or 0
+        # 2. Résumé : nb dossiers analysés + volume total (stockés dans scans)
+        nb_dossiers = scan.get("total_folders") or 0
+        total_kb = scan.get("total_size_kb") or 0
 
         # 3. Scan précédent immédiat (pour calcul de variation totale)
         cur.execute(
@@ -126,11 +117,11 @@ def get_scan_details(id_scan: int) -> dict:
         variation_kb = None
         if id_scan_prev:
             cur.execute(
-                "SELECT SUM(size_kb) AS total_kb FROM sizes WHERE id_scan = %s",
+                "SELECT total_size_kb FROM scans WHERE id_scan = %s",
                 (id_scan_prev,),
             )
             prev_row = cur.fetchone()
-            prev_kb = prev_row["total_kb"] or 0
+            prev_kb = (prev_row["total_size_kb"] if prev_row else 0) or 0
             variation_kb = total_kb - prev_kb
 
         # 4. Nouveaux dossiers (première apparition dans sizes à cet id_scan)
@@ -340,24 +331,24 @@ def get_dossiers_racines() -> list[dict]:
         return []
     try:
         cur = conn.cursor(dictionary=True)
-        id_scan = _get_id_dernier_scan(cur)
-
         placeholders = ",".join(["%s"] * len(chemins_racines))
         cur.execute(
             f"""
             SELECT
                 f.id_folder, f.path, f.is_new,
-                COALESCE(sz.size_kb, 0) AS size_kb
+                COALESCE((
+                    SELECT sz.size_kb FROM sizes sz
+                    WHERE sz.id_folder = f.id_folder
+                    ORDER BY sz.id_scan DESC LIMIT 1
+                ), 0) AS size_kb
             FROM folders f
-            LEFT JOIN sizes sz
-                ON f.id_folder = sz.id_folder AND sz.id_scan = %s
             WHERE f.path IN ({placeholders})
             ORDER BY f.path
             """,
-            (id_scan, *chemins_racines),
+            (*chemins_racines,),
         )
         rows = cur.fetchall()
-        return _enrichir_avec_taille(cur, rows, id_scan)
+        return _enrichir_avec_taille(cur, rows, None)
     except mysql.connector.Error:
         return []
     finally:
@@ -383,7 +374,6 @@ def get_enfants_dossier(parent_path: str) -> list[dict]:
         return []
     try:
         cur = conn.cursor(dictionary=True)
-        id_scan = _get_id_dernier_scan(cur)
 
         # LEFT(path, n) = prefix évite les problèmes d'échappement du backslash dans LIKE MariaDB
         # f.path != original_parent_path empêche le dossier racine (ex: D:\) d'apparaître comme son propre enfant
@@ -391,19 +381,21 @@ def get_enfants_dossier(parent_path: str) -> list[dict]:
             """
             SELECT
                 f.id_folder, f.path, f.is_new,
-                COALESCE(sz.size_kb, 0) AS size_kb
+                COALESCE((
+                    SELECT sz.size_kb FROM sizes sz
+                    WHERE sz.id_folder = f.id_folder
+                    ORDER BY sz.id_scan DESC LIMIT 1
+                ), 0) AS size_kb
             FROM folders f
-            LEFT JOIN sizes sz
-                ON f.id_folder = sz.id_folder AND sz.id_scan = %s
             WHERE LEFT(f.path, %s) = %s
               AND (LENGTH(f.path) - LENGTH(REPLACE(f.path, %s, ''))) = %s
               AND f.path != %s
             ORDER BY f.path
             """,
-            (id_scan, len(prefix), prefix, sep, sep_count_children, original_parent_path),
+            (len(prefix), prefix, sep, sep_count_children, original_parent_path),
         )
         rows = cur.fetchall()
-        return _enrichir_avec_taille(cur, rows, id_scan)
+        return _enrichir_avec_taille(cur, rows, None)
     except mysql.connector.Error:
         return []
     finally:
@@ -499,7 +491,6 @@ def rechercher_dossiers(query: str, limit: int = 30) -> list[dict]:
         return []
     try:
         cur = conn.cursor(dictionary=True)
-        id_scan = _get_id_dernier_scan(cur)
 
         # Recherche LIKE sur le path — échappe les caractères spéciaux SQL
         # Le backslash doit être échappé EN PREMIER (c'est le char d'échappement de LIKE)
@@ -510,15 +501,17 @@ def rechercher_dossiers(query: str, limit: int = 30) -> list[dict]:
             """
             SELECT
                 f.id_folder, f.path, f.is_new,
-                COALESCE(sz.size_kb, 0) AS size_kb
+                COALESCE((
+                    SELECT sz.size_kb FROM sizes sz
+                    WHERE sz.id_folder = f.id_folder
+                    ORDER BY sz.id_scan DESC LIMIT 1
+                ), 0) AS size_kb
             FROM folders f
-            LEFT JOIN sizes sz
-                ON f.id_folder = sz.id_folder AND sz.id_scan = %s
             WHERE f.path LIKE %s
             ORDER BY LENGTH(f.path) ASC, f.path ASC
             LIMIT %s
             """,
-            (id_scan, search_term, limit),
+            (search_term, limit),
         )
         rows = cur.fetchall()
         return [
