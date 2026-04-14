@@ -117,6 +117,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                 </svg>
                 <span id="modal-title">Détails du scan</span>
+                <span id="modal-datetime" class="text-xs text-gray-500 font-normal"></span>
             </h2>
             <button id="modal-close" class="text-gray-500 hover:text-white transition-colors p-1 rounded-lg hover:bg-gray-800">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,6 +142,7 @@
     const modal = document.getElementById('scan-modal');
     const modalBody = document.getElementById('modal-body');
     const modalTitle = document.getElementById('modal-title');
+    const modalDatetime = document.getElementById('modal-datetime');
 
     function fmt(n) {
         return n === null || n === undefined
@@ -150,6 +152,7 @@
 
     function openModal(scanId) {
         modalTitle.textContent = `Détails du scan #${scanId}`;
+        modalDatetime.textContent = '';
         modalBody.innerHTML = '<div class="text-center py-8 text-gray-500 text-sm">Chargement…</div>';
         modal.classList.remove('hidden');
 
@@ -164,6 +167,8 @@
                 const r = data.resume;
                 const scan = data.scan;
                 const alertes = data.alertes;
+
+                modalDatetime.textContent = `— le ${scan.date_}`;
 
                 // Variation
                 let variationHtml = '<span class="text-gray-500">—</span>';
@@ -216,21 +221,33 @@
 
                     alertes.forEach(a => {
                         if (a.type === 'nouveau') {
-                            html += `<tr class="hover:bg-gray-800/30">
+                            html += `
+                            <tr class="hover:bg-gray-800/60 transition-colors cursor-pointer group/row" 
+                                onclick="window.location.href='/history?id=${a.id_folder}&path=${encodeURIComponent(a.chemin)}'">
                                 <td class="px-4 py-2.5">
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-900/40 text-primary-300 border border-primary-800/50 text-[10px] font-bold">Nouveau</span>
                                 </td>
-                                <td class="px-4 py-2.5 font-mono text-gray-400 truncate max-w-[280px] cursor-help" data-tooltip="${a.chemin}">${a.chemin}</td>
+                                <td class="px-4 py-2.5">
+                                    <span class="font-mono text-gray-400 truncate max-w-[280px] block group-hover/row:text-primary-400 transition-colors" data-tooltip="${a.chemin}">
+                                        ${a.chemin}
+                                    </span>
+                                </td>
                                 <td class="px-4 py-2.5 text-right text-gray-300 font-mono">${window.formatSize(a.taille_kb)}</td>
                             </tr>`;
                         } else {
                             const sign = a.diff_kb > 0 ? '+' : '';
                             const color = a.diff_kb > 0 ? 'text-red-400' : (a.diff_kb < 0 ? 'text-green-400' : 'text-gray-400');
-                            html += `<tr class="hover:bg-gray-800/30">
+                            html += `
+                            <tr class="hover:bg-gray-800/60 transition-colors cursor-pointer group/row"
+                                onclick="window.location.href='/history?id=${a.id_folder}&path=${encodeURIComponent(a.chemin)}'">
                                 <td class="px-4 py-2.5">
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-300 border border-yellow-800/50 text-[10px] font-bold">Modifié</span>
                                 </td>
-                                <td class="px-4 py-2.5 font-mono text-gray-400 truncate max-w-[280px] cursor-help" data-tooltip="${a.chemin}">${a.chemin}</td>
+                                <td class="px-4 py-2.5">
+                                    <span class="font-mono text-gray-400 truncate max-w-[280px] block group-hover/row:text-primary-400 transition-colors" data-tooltip="${a.chemin}">
+                                        ${a.chemin}
+                                    </span>
+                                </td>
                                 <td class="px-4 py-2.5 text-right font-mono font-semibold ${color}">${sign}${window.formatSize(a.diff_kb)}</td>
                             </tr>`;
                         }

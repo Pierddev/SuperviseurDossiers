@@ -130,7 +130,7 @@ def get_scan_details(id_scan: int) -> dict:
         seuil_kb = seuil_mo * 1024
         cur.execute(
             """
-            SELECT f.path, sz.size_kb
+            SELECT f.id_folder, f.path, sz.size_kb
             FROM sizes sz
             JOIN folders f ON sz.id_folder = f.id_folder
             WHERE sz.id_scan = %s
@@ -147,6 +147,7 @@ def get_scan_details(id_scan: int) -> dict:
         nouveaux = [
             {
                 "type": "nouveau",
+                "id_folder": r["id_folder"],
                 "chemin": r["path"],
                 "taille_kb": r["size_kb"],
             }
@@ -158,7 +159,7 @@ def get_scan_details(id_scan: int) -> dict:
         if id_scan_prev:
             cur.execute(
                 """
-                SELECT f.path,
+                SELECT f.id_folder, f.path,
                        sz_cur.size_kb AS size_kb_cur,
                        sz_prev.size_kb AS size_kb_prev,
                        (sz_cur.size_kb - sz_prev.size_kb) AS diff_kb
@@ -176,6 +177,7 @@ def get_scan_details(id_scan: int) -> dict:
             alertes_modifs = [
                 {
                     "type": "modification",
+                    "id_folder": r["id_folder"],
                     "chemin": r["path"],
                     "diff_kb": r["diff_kb"],
                     "taille_kb": r["size_kb_cur"],

@@ -132,15 +132,8 @@ if __name__ == "__main__":
         # Mode planifié (comportement par défaut)
         heure_scan = os.getenv("HEURE_SCAN", "17:30")
 
-        # En mode Debug Flask, le reloader lance 2 processus (parent + enfant).
-        # On ne planifie le scan que dans le processus enfant pour éviter les doublons.
-        _is_reloader_parent = (
-            os.getenv("FLASK_DEBUG", "0") == "1"
-            and os.environ.get("WERKZEUG_RUN_MAIN") != "true"
-        )
-
-        if not _is_reloader_parent:
-            schedule.every().day.at(heure_scan).do(scanner)
+        # Planification du scan
+        schedule.every().day.at(heure_scan).do(scanner)
 
         delai_verification = int(os.getenv("DELAI_VERIFICATION", 300))
 
@@ -221,24 +214,31 @@ if __name__ == "__main__":
                 debug_mode = os.getenv("FLASK_DEBUG", "0") == "1"
                 
                 if debug_mode:
-                    # En mode debug, Flask doit tourner sur le thread principal pour le reloader
-                    # On lance l'ordonnanceur uniquement dans le processus enfant
-                    if not _is_reloader_parent:
-                        def lancer_ordonnanceur():
-                            print("⏱️  Ordonnanceur de scan démarré en arrière-plan")
-                            while True:
-                                schedule.run_pending()
-                                time.sleep(delai_verification)
-                                
-                        thread_scan = threading.Thread(target=lancer_ordonnanceur, daemon=True)
-                        thread_scan.start()
+                    # En mode debug, on utilise livereload pour rafraîchir le navigateur automatiquement
+                    # lors des modifications de CSS (style inline dans les templates) ou de fichiers statiques.
+                    from livereload import Server
                     
-                    # On lance Flask en bloquant (avec reloader actif)
-                    # Note : Cela ne s'exécutera que si INTRANET_ENABLED=1
-                    statut_intranet = f"✅ Actif (RELOAD) sur le port {intra_port}"
-                    print(f"🌐 Intranet démarré sur http://0.0.0.0:{intra_port} (Auto-reload actif)")
-                    app.run(host="0.0.0.0", port=intra_port, debug=True)
-                    # Le code s'arrête ici tant que Flask tourne
+                    # On lance l'ordonnanceur dans un thread séparé (uniquement dans le processus principal de livereload)
+                    def lancer_ordonnanceur():
+                        print("⏱️  Ordonnanceur de scan démarré en arrière-plan")
+                        while True:
+                            schedule.run_pending()
+                            time.sleep(delai_verification)
+                            
+                    thread_scan = threading.Thread(target=lancer_ordonnanceur, daemon=True)
+                    thread_scan.start()
+
+                    server = Server(app.wsgi_app)
+                    
+                    # Surveiller les templates et les fichiers statiques
+                    server.watch(os.path.join(DOSSIER_APP, "intranet", "templates"))
+                    server.watch(os.path.join(DOSSIER_APP, "intranet", "static"))
+                    
+                    statut_intranet = f"✅ Actif (LIVE RELOAD) sur le port {intra_port}"
+                    print(f"🌐 Intranet démarré sur http://0.0.0.0:{intra_port} (Live Reload actif)")
+                    
+                    # Server.serve bloque l'exécution
+                    server.serve(port=intra_port, host="0.0.0.0")
                 else:
                     # Mode production / normal : Flask en arrière-plan
                     thread_intranet = threading.Thread(
