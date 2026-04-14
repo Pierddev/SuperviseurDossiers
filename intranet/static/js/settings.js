@@ -132,13 +132,13 @@ function addTag(target) {
 }
 
 // Enter sur les inputs de chemin ajoute le tag
-["racine-input", "exclus-input"].forEach((id) => {
+["racines-input", "exclus-input"].forEach((id) => {
     const el = document.getElementById(id);
     if (!el) return;
     el.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
-            addTag(id === "racine-input" ? "racines" : "exclus");
+            addTag(id === "racines-input" ? "racines" : "exclus");
         }
     });
 });

@@ -256,7 +256,7 @@ def creer_app() -> Flask:
         if request.method == "POST":
 
             def _save(key, val):
-                dotenv.set_key(env_file, key, val)
+                dotenv.set_key(env_file, key, val, quote_mode="never")
                 os.environ[key] = val
 
             # --- Base de données ---
@@ -301,7 +301,7 @@ def creer_app() -> Flask:
                 for c, v in zip(chemins_seuil, valeurs_seuil)
                 if c.strip() and v.strip()
             ]
-            _save("SEUILS_PERSONNALISES", ";".join(seuils_valides))
+            _save("SEUILS_PERSONNALISES", ",".join(seuils_valides))
 
             # Horodatage de la dernière sauvegarde
             _save("LAST_SAVED", datetime.now().strftime("%Y-%m-%d %H:%M"))
@@ -321,7 +321,7 @@ def creer_app() -> Flask:
         ]
 
         seuils_perso = []
-        for paire in _get("SEUILS_PERSONNALISES").split(";"):
+        for paire in _get("SEUILS_PERSONNALISES").split(","):
             if "=" in paire:
                 chemin, val = paire.rsplit("=", 1)
                 seuils_perso.append({"path": chemin.strip(), "val": val.strip()})

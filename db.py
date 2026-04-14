@@ -20,7 +20,7 @@ def parser_seuils_personnalises() -> dict[str, int]:
     if not valeur.strip():
         return seuils
 
-    for paire in valeur.split(";"):
+    for paire in valeur.split(","):
         paire = paire.strip()
         if "=" not in paire:
             continue
