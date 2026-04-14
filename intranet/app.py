@@ -154,9 +154,10 @@ def creer_app() -> Flask:
     @app.route("/api/historique/<int:id_folder>")
     @login_required
     def api_historique(id_folder: int):
-        from flask import jsonify
+        from flask import jsonify, request as req
         from intranet.queries import get_historique_dossier
-        data = get_historique_dossier(id_folder)
+        periode = req.args.get("periode", "30")
+        data = get_historique_dossier(id_folder, periode)
         return jsonify(data)
 
     @app.route("/api/recherche")

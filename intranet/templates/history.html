@@ -140,7 +140,9 @@
             <div class="mb-4 flex items-start justify-between gap-4 flex-shrink-0">
                 <div class="min-w-0">
                     <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Dossier sélectionné</p>
-                    <h2 id="chart-title" class="text-base font-semibold text-white font-mono truncate"></h2>
+                    <div class="flex items-center gap-3">
+                        <h2 id="chart-title" class="text-base font-semibold text-white font-mono truncate"></h2>
+                    </div>
                 </div>
                 <div class="flex gap-3 flex-shrink-0">
                     <div class="bg-gray-800 rounded-lg px-4 py-2 text-center">
@@ -159,14 +161,25 @@
             </div>
             
             <!-- Graphique -->
-            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 flex-shrink-0 mb-6" style="height: 320px;">
-                <canvas id="history-chart"></canvas>
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 flex-shrink-0 mb-6 flex flex-col relative" style="height: 320px;">
+                <div class="flex justify-end mb-2 z-10">
+                    <div class="flex space-x-1 bg-gray-800/80 backdrop-blur-sm p-1 rounded-lg border border-gray-700/50">
+                        <button class="time-filter-btn px-3 py-1 text-[11px] font-medium rounded-md text-gray-400 hover:text-white transition-colors" data-value="7">7 jours</button>
+                        <button class="time-filter-btn px-3 py-1 text-[11px] font-medium rounded-md bg-gray-700 text-white shadow-sm transition-colors" data-value="30">30 jours</button>
+                        <button class="time-filter-btn px-3 py-1 text-[11px] font-medium rounded-md text-gray-400 hover:text-white transition-colors" data-value="ytd">Cette année</button>
+                        <button class="time-filter-btn px-3 py-1 text-[11px] font-medium rounded-md text-gray-400 hover:text-white transition-colors" data-value="365">1 an</button>
+                    </div>
+                </div>
+                <!-- Le canvas prend le reste de l'espace -->
+                <div class="flex-1 relative">
+                    <canvas id="history-chart"></canvas>
+                </div>
             </div>
             
             <!-- Tableau détaillé -->
             <div class="bg-gray-900 border border-gray-800 rounded-xl flex-1 overflow-hidden flex flex-col mb-4">
                 <div class="p-4 border-b border-gray-800 bg-gray-900">
-                    <h3 class="text-sm font-semibold text-white">Historique détaillé (30 derniers jours)</h3>
+                    <h3 id="table-title" class="text-sm font-semibold text-white">Historique détaillé</h3>
                 </div>
                 <div class="overflow-y-auto w-full">
                     <table class="w-full text-left text-xs text-gray-400">
@@ -206,6 +219,9 @@
 <script>
 let chartInstance = null;
 let activeItem = null;
+let currentFolderId = null;
+let currentFolderPath = null;
+let currentPeriode = "30";
 
 // ── Clic sur un dossier ──────────────────────────────────────────────
 function handleFolderClick(el) {
@@ -303,11 +319,14 @@ function loadChildren(wrapEl, parentPath, depth) {
 
 // ── Graphique Chart.js ────────────────────────────────────────────────
 function loadChart(id, path) {
+    currentFolderId = id;
+    currentFolderPath = path;
+
     document.getElementById('placeholder').classList.add('hidden');
     document.getElementById('chart-container').classList.add('hidden');
     document.getElementById('chart-loader').classList.remove('hidden');
 
-    fetch('/api/historique/' + id)
+    fetch('/api/historique/' + id + '?periode=' + currentPeriode)
         .then(r => r.json())
         .then(data => renderChart(data, path))
         .catch(() => {
@@ -399,6 +418,13 @@ function renderChart(data, path) {
     const tbody = document.getElementById('history-table-body');
     tbody.innerHTML = '';
     
+    // Mise à jour du titre du tableau
+    let textPeriode = "30 derniers jours";
+    if (currentPeriode === "7") textPeriode = "7 derniers jours";
+    else if (currentPeriode === "365") textPeriode = "365 derniers jours";
+    else if (currentPeriode === "ytd") textPeriode = "cette année";
+    document.getElementById('table-title').textContent = "Historique détaillé (" + textPeriode + ")";
+    
     if (data.history_table && data.history_table.length > 0) {
         data.history_table.forEach(r => {
             const tr = document.createElement('tr');
@@ -424,6 +450,26 @@ function renderChart(data, path) {
         tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Aucune donnée trouvée.</td></tr>';
     }
 }
+
+// Gestion du changement de filtre
+document.querySelectorAll('.time-filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        // Enlève l'état actif de tous les boutons
+        document.querySelectorAll('.time-filter-btn').forEach(b => {
+            b.classList.remove('bg-gray-700', 'text-white', 'shadow-sm');
+            b.classList.add('text-gray-400', 'hover:text-white');
+        });
+        
+        // Applique l'état actif au bouton cliqué
+        this.classList.remove('text-gray-400', 'hover:text-white');
+        this.classList.add('bg-gray-700', 'text-white', 'shadow-sm');
+
+        currentPeriode = this.dataset.value;
+        if (currentFolderId && currentFolderPath) {
+            loadChart(currentFolderId, currentFolderPath);
+        }
+    });
+});
 
 // ── Recherche via API avec debounce ───────────────────────────────────
 const searchInput     = document.getElementById('search-input');

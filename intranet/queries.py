@@ -407,11 +407,11 @@ def get_enfants_dossier(parent_path: str) -> list[dict]:
         conn.close()
 
 
-def get_historique_dossier(id_folder: int) -> dict:
+def get_historique_dossier(id_folder: int, periode: str = "30") -> dict:
     """
     Retourne les données nécessaires au graphique Chart.js pour un dossier donné :
     - Les informations du dossier (chemin, is_new)
-    - L'historique des tailles [{date, size_mb}] sur tous les scans complétés
+    - L'historique des tailles [{date, size_mb}] sur la période sélectionnée
     """
     conn = get_connexion()
     if not conn:
@@ -428,9 +428,17 @@ def get_historique_dossier(id_folder: int) -> dict:
         if not dossier:
             return {}
 
-        # Historique des tailles par scan (30 derniers jours)
+        # Historique des tailles par scan (période variable)
+        date_condition = "AND sc.date_ >= DATE_SUB(NOW(), INTERVAL 30 DAY)"
+        if periode == "7":
+            date_condition = "AND sc.date_ >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
+        elif periode == "365":
+            date_condition = "AND sc.date_ >= DATE_SUB(NOW(), INTERVAL 365 DAY)"
+        elif periode == "ytd":
+            date_condition = "AND YEAR(sc.date_) = YEAR(NOW())"
+
         cur.execute(
-            """
+            f"""
             SELECT
                 sc.date_,
                 sz.size_kb
@@ -438,7 +446,7 @@ def get_historique_dossier(id_folder: int) -> dict:
             JOIN scans sc ON sz.id_scan = sc.id_scan
             WHERE sz.id_folder = %s
               AND sc.status = 'completed'
-              AND sc.date_ >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+              {date_condition}
             ORDER BY sc.date_ ASC
             """,
             (id_folder,),
