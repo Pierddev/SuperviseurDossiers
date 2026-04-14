@@ -8,6 +8,10 @@ import mysql.connector
 
 from notifications import envoyer_notif_teams
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def parser_seuils_personnalises() -> dict[str, int]:
     """
@@ -195,6 +199,104 @@ def marquer_dossiers_comme_racines(
         envoyer_notif_teams(f"Erreur lors de la mise à jour des racines : {err}")
 
 
+def detecter_dossiers_supprimes(
+    connexion_mysql: mysql.connector.MySQLConnection,
+    chemins_disque: set[str],
+    chemin_racine: str,
+    id_scan: int,
+) -> list[dict]:
+    """
+    Détecte les dossiers supprimés du disque entre deux scans.
+    Compare les dossiers en base (pour la racine donnée) avec ceux trouvés sur le disque.
+    Pour chaque dossier absent du disque :
+      - Met is_deleted = 1 dans folders
+      - Insère une entrée size_kb = 0 dans sizes
+    Retourne la liste des dossiers supprimés (chemin + dernière taille connue en Mo).
+    """
+    chemin_racine_norm = os.path.normpath(chemin_racine)
+    prefix = chemin_racine_norm
+    if not prefix.endswith(os.sep):
+        prefix += os.sep
+
+    try:
+        curseur = connexion_mysql.cursor()
+
+        # Récupérer tous les dossiers NON supprimés en base pour cette racine
+        curseur.execute(
+            "SELECT id_folder, path FROM folders "
+            "WHERE is_deleted = 0 AND (path = %s OR LEFT(path, %s) = %s)",
+            (chemin_racine_norm, len(prefix), prefix),
+        )
+        dossiers_en_base = {row[1]: row[0] for row in curseur.fetchall()}
+
+        # Comparaison instantanée via set difference
+        chemins_base = set(dossiers_en_base.keys())
+        supprimes_chemins = chemins_base - chemins_disque
+
+        if not supprimes_chemins:
+            curseur.close()
+            return []
+
+        # Récupérer les dernières tailles connues pour les dossiers supprimés
+        ids_supprimes = [dossiers_en_base[c] for c in supprimes_chemins]
+        placeholders = ",".join(["%s"] * len(ids_supprimes))
+        curseur.execute(
+            f"SELECT s.id_folder, s.size_kb FROM sizes s "
+            f"INNER JOIN ("
+            f"  SELECT id_folder, MAX(id_scan) AS max_scan "
+            f"  FROM sizes WHERE id_folder IN ({placeholders}) "
+            f"  GROUP BY id_folder"
+            f") latest ON s.id_folder = latest.id_folder AND s.id_scan = latest.max_scan",
+            ids_supprimes,
+        )
+        dernieres_tailles = {row[0]: row[1] for row in curseur.fetchall()}
+
+        dossiers_supprimes = []
+        compteur = 0
+        for chemin in supprimes_chemins:
+            id_dossier = dossiers_en_base[chemin]
+            derniere_taille_kb = dernieres_tailles.get(id_dossier, 0)
+
+            # Marquer comme supprimé
+            curseur.execute(
+                "UPDATE folders SET is_deleted = 1 WHERE id_folder = %s",
+                (id_dossier,),
+            )
+            # Enregistrer taille 0 pour ce scan (crée le point zéro dans l'historique)
+            curseur.execute(
+                "INSERT INTO sizes (id_scan, id_folder, size_kb) VALUES (%s, %s, 0)",
+                (id_scan, id_dossier),
+            )
+
+            # Convertir en Mo pour la comparaison avec le seuil
+            derniere_taille_mo = round(derniere_taille_kb / 1024)
+            dossiers_supprimes.append(
+                {
+                    "type": "suppression",
+                    "chemin": chemin,
+                    "taille": derniere_taille_mo,
+                }
+            )
+
+            compteur += 1
+            if compteur % 5000 == 0:
+                connexion_mysql.commit()
+
+        connexion_mysql.commit()
+        curseur.close()
+
+        logger.info(
+            "Détection suppressions pour %s : %d dossier(s) supprimé(s)",
+            chemin_racine_norm,
+            len(dossiers_supprimes),
+        )
+        return dossiers_supprimes
+
+    except mysql.connector.Error as err:
+        envoyer_notif_teams(f"Erreur lors de la détection des suppressions : {err}")
+        return []
+
+
 def enregistrer_totaux_scan(
     connexion_mysql: mysql.connector.MySQLConnection,
     id_scan: int,
@@ -276,6 +378,13 @@ def traiter_dossiers_en_lot(
         if chemin in dossiers_existants:
             # Dossier existant → récupérer l'id et la taille précédente
             id_dossier = dossiers_existants[chemin]
+
+            # Résurrection : si le dossier était marqué supprimé, le réactiver
+            curseur.execute(
+                "UPDATE folders SET is_deleted = 0 WHERE id_folder = %s AND is_deleted = 1",
+                (id_dossier,),
+            )
+
             taille_precedente = tailles_precedentes.get(id_dossier, 0)
             diff_ko = taille_en_ko - int(taille_precedente)
 

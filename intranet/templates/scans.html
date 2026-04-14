@@ -234,6 +234,20 @@
                                 </td>
                                 <td class="px-4 py-2.5 text-right text-gray-300 font-mono">${window.formatSize(a.taille_kb)}</td>
                             </tr>`;
+                        } else if (a.type === 'suppression') {
+                            html += `
+                            <tr class="hover:bg-gray-800/60 transition-colors cursor-pointer group/row" 
+                                onclick="window.location.href='/history?id=${a.id_folder}&path=${encodeURIComponent(a.chemin)}'">
+                                <td class="px-4 py-2.5">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-900/40 text-red-300 border border-red-800/50 text-[10px] font-bold">Supprimé</span>
+                                </td>
+                                <td class="px-4 py-2.5">
+                                    <span class="font-mono text-gray-400 truncate max-w-[280px] block group-hover/row:text-primary-400 transition-colors" data-tooltip="${a.chemin}">
+                                        ${a.chemin}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2.5 text-right text-red-300 font-mono">${window.formatSize(a.taille_kb)}</td>
+                            </tr>`;
                         } else {
                             const sign = a.diff_kb > 0 ? '+' : '';
                             const color = a.diff_kb > 0 ? 'text-red-400' : (a.diff_kb < 0 ? 'text-green-400' : 'text-gray-400');

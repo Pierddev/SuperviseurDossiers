@@ -116,6 +116,7 @@
                 <div class="flex-1 min-w-0 relative group">
                     <p class="text-sm text-gray-200 font-mono truncate">
                         {{ dossier.path }}
+                        {% if dossier.is_deleted %}<span class="ml-2 text-[9px] bg-red-900/80 text-red-300 border border-red-800 px-1 rounded align-middle">SUPPRIMÉ</span>{% endif %}
                     </p>
                     <!-- Tooltip Tailwind -->
                     <div class="absolute left-0 bottom-full mb-2 hidden group-hover/row:block z-50 animate-in fade-in slide-in-from-bottom-1 duration-200">

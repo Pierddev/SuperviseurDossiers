@@ -12,6 +12,7 @@ from db import (
     connecter_base_de_donnees,
     creer_scan,
     deconnecter_base_de_donnees,
+    detecter_dossiers_supprimes,
     enregistrer_totaux_scan,
     reset_statut_nouveaux_dossiers_racines,
     terminer_scan,
@@ -46,6 +47,7 @@ def scanner() -> None:
 
         nouveaux_dossiers = []
         dossiers_modifies = []
+        dossiers_supprimes = []
         taille_totale_scan = 0
         total_changement_taille = 0
         total_dossiers_scannes = 0
@@ -74,6 +76,13 @@ def scanner() -> None:
                 dossiers_avec_tailles.get(chemin_racine, 0) / 1024
             )
 
+            # Détection des dossiers supprimés pour cette racine
+            chemins_disque = set(dossiers_avec_tailles.keys())
+            supprimes = detecter_dossiers_supprimes(
+                connexion_mysql, chemins_disque, chemin_racine, id_scan
+            )
+            dossiers_supprimes.extend(supprimes)
+
         # Enregistrer les totaux corrects dans la table scans
         enregistrer_totaux_scan(
             connexion_mysql, id_scan, total_dossiers_scannes, taille_totale_racines_ko
@@ -85,6 +94,7 @@ def scanner() -> None:
         # Filtre les dossiers parents redondants pour la notification
         nouveaux_dossiers = filtrer_dossiers_redondants(nouveaux_dossiers)
         dossiers_modifies = filtrer_dossiers_redondants(dossiers_modifies)
+        dossiers_supprimes = filtrer_dossiers_redondants(dossiers_supprimes)
 
         # Convertir les totaux de Ko en Mo pour l'affichage dans la notification
         total_changement_mo = round(total_changement_taille / 1024)
@@ -106,7 +116,7 @@ def scanner() -> None:
             duree_formatee = f"{secondes}s"
 
         message += f"\n<br>📅 {datetime.now().strftime('%d/%m/%Y à %H:%M')} ⏱️ Durée du scan : {duree_formatee}"
-        message += f"\n<br>📊 **Résumé** : {len(nouveaux_dossiers) + len(dossiers_modifies)} changements détectés (Total {signe}{total_changement_mo} Mo) \n"
+        message += f"\n<br>📊 **Résumé** : {len(nouveaux_dossiers) + len(dossiers_modifies) + len(dossiers_supprimes)} changements détectés (Total {signe}{total_changement_mo} Mo) \n"
 
         # Seuil pour la mise en évidence par poids (5 * SEUIL_DEFAUT)
         seuil_poids = int(os.getenv("SEUIL_DEFAUT", 100)) * 5
@@ -134,7 +144,22 @@ def scanner() -> None:
                 )
             message += "\n```"
 
-        if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0:
+        if len(dossiers_supprimes) > 0:
+            # Filtre par seuil : ne notifier que les suppressions significatives
+            supprimes_notifies = [
+                d for d in dossiers_supprimes if d["taille"] > seuil_poids // 5
+            ]
+            if supprimes_notifies:
+                message += "\n<br>🗑️ **Dossiers supprimés**:\n```"
+                for dossier in supprimes_notifies:
+                    marqueur = "⚠️ " if dossier["taille"] > seuil_poids else "➖ "
+                    dossier["chemin"] = dossier["chemin"].replace("\\", " > ")
+                    message += (
+                        f"\n{marqueur}(- {dossier['taille']:>6} Mo)   {dossier['chemin']}"
+                    )
+                message += "\n```"
+
+        if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0 and len(dossiers_supprimes) == 0:
             message += "\n\nAucun dossier modifié ou nouveau"
 
         terminer_scan(connexion_mysql, id_scan, "completed")

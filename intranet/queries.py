@@ -185,6 +185,36 @@ def get_scan_details(id_scan: int) -> dict:
                 for r in cur.fetchall()
             ]
 
+        # 6. Dossiers supprimés (size_kb = 0 pour ce scan, avec une taille précédente > 0)
+        alertes_suppr = []
+        if id_scan_prev:
+            cur.execute(
+                """
+                SELECT f.id_folder, f.path,
+                       sz_prev.size_kb AS size_kb_prev
+                FROM sizes sz_cur
+                JOIN sizes sz_prev ON sz_cur.id_folder = sz_prev.id_folder
+                JOIN folders f ON sz_cur.id_folder = f.id_folder
+                WHERE sz_cur.id_scan = %s
+                  AND sz_prev.id_scan = %s
+                  AND sz_cur.size_kb = 0
+                  AND sz_prev.size_kb > 0
+                  AND f.is_deleted = 1
+                ORDER BY sz_prev.size_kb DESC
+                LIMIT 100
+                """,
+                (id_scan, id_scan_prev),
+            )
+            alertes_suppr = [
+                {
+                    "type": "suppression",
+                    "id_folder": r["id_folder"],
+                    "chemin": r["path"],
+                    "taille_kb": r["size_kb_prev"],
+                }
+                for r in cur.fetchall()
+            ]
+
         # Convertit la date pour la sérialisation JSON
         if scan.get("date_"):
             scan["date_"] = scan["date_"].strftime("%d/%m/%Y à %H:%M:%S")
@@ -198,7 +228,7 @@ def get_scan_details(id_scan: int) -> dict:
                 "total_kb": total_kb,
                 "variation_kb": variation_kb,
             },
-            "alertes": nouveaux + alertes_modifs,
+            "alertes": nouveaux + alertes_modifs + alertes_suppr,
         }
 
     except mysql.connector.Error:
@@ -251,7 +281,7 @@ def get_stats_dashboard() -> dict:
             cur.execute(
                 """
                 SELECT
-                    f.id_folder, f.path,
+                    f.id_folder, f.path, f.is_deleted,
                     s1.size_kb AS size_actuel_kb,
                     s2.size_kb AS size_precedent_kb,
                     (s1.size_kb - s2.size_kb) AS diff_kb
@@ -308,6 +338,7 @@ def _enrichir_avec_taille(cur, rows: list[dict], id_scan: int | None) -> list[di
             "id_folder": row["id_folder"],
             "path": path,
             "is_new": bool(row.get("is_new", 0)),
+            "is_deleted": bool(row.get("is_deleted", 0)),
             "size_kb": row.get("size_kb", 0),
             "has_children": has_children,
         })
@@ -334,7 +365,7 @@ def get_dossiers_racines() -> list[dict]:
         cur.execute(
             """
             SELECT
-                f.id_folder, f.path, f.is_new,
+                f.id_folder, f.path, f.is_new, f.is_deleted,
                 COALESCE((
                     SELECT sz.size_kb FROM sizes sz
                     WHERE sz.id_folder = f.id_folder
@@ -385,7 +416,7 @@ def get_enfants_dossier(parent_path: str) -> list[dict]:
         cur.execute(
             """
             SELECT
-                f.id_folder, f.path, f.is_new,
+                f.id_folder, f.path, f.is_new, f.is_deleted,
                 COALESCE((
                     SELECT sz.size_kb FROM sizes sz
                     WHERE sz.id_folder = f.id_folder
