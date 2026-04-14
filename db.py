@@ -129,6 +129,45 @@ def terminer_scan(
         envoyer_notif_teams(f"Erreur lors de la terminaison du scan : {err}")
 
 
+def reset_statut_nouveaux_dossiers_racines(
+    connexion_mysql: mysql.connector.MySQLConnection, chemins_racines: list[str]
+) -> None:
+    """
+    Définit is_new = 0 pour tous les dossiers qui étaient marqués 'nouveaux'
+    et qui appartiennent aux racines que l'on va scanner.
+    Ceci permet de gérer le cas où un dossier nouveau est supprimé avant le scan suivant.
+    """
+    if not chemins_racines:
+        return
+
+    try:
+        curseur = connexion_mysql.cursor()
+        clauses = []
+        params = []
+        for racine in chemins_racines:
+            racine = racine.strip()
+            if racine:
+                # Normalisation pour correspondre aux chemins stockés
+                # On s'assure que le chemin finit par un séparateur pour ne matcher que le dossier exact ou ses enfants
+                racine_norm = os.path.normpath(racine)
+                prefix = racine_norm
+                if not prefix.endswith(os.sep):
+                    prefix += os.sep
+
+                clauses.append("path = %s OR LEFT(path, %s) = %s")
+                params.append(racine_norm)
+                params.append(len(prefix))
+                params.append(prefix)
+
+        if clauses:
+            query = f"UPDATE folders SET is_new = 0 WHERE is_new = 1 AND ({' OR '.join(clauses)})"
+            curseur.execute(query, params)
+            connexion_mysql.commit()
+        curseur.close()
+    except mysql.connector.Error as err:
+        envoyer_notif_teams(f"Erreur lors de la réinitialisation des tags 'new' : {err}")
+
+
 def enregistrer_totaux_scan(
     connexion_mysql: mysql.connector.MySQLConnection,
     id_scan: int,
@@ -184,11 +223,8 @@ def traiter_dossiers_en_lot(
     id_dernier_scan = dernier_scan[0] if dernier_scan else None
 
     # Charge TOUS les dossiers existants en mémoire (1 seule requête)
-    curseur.execute("SELECT id_folder, path, is_new FROM folders")
-    dossiers_existants = {
-        row[1]: {"id": row[0], "est_nouveau": row[2]}
-        for row in curseur.fetchall()
-    }
+    curseur.execute("SELECT id_folder, path FROM folders")
+    dossiers_existants = {row[1]: row[0] for row in curseur.fetchall()}
 
     # Si un scan précédent existe, charger les tailles correspondantes
     tailles_precedentes = {}
@@ -212,19 +248,12 @@ def traiter_dossiers_en_lot(
 
         if chemin in dossiers_existants:
             # Dossier existant → récupérer l'id et la taille précédente
-            info = dossiers_existants[chemin]
-            id_dossier = info["id"]
+            id_dossier = dossiers_existants[chemin]
             taille_precedente = tailles_precedentes.get(id_dossier, 0)
             diff_ko = taille_en_ko - int(taille_precedente)
 
             if chemin_racine_norm and chemin_norm == chemin_racine_norm:
                 changement_racine = diff_ko
-
-            if info["est_nouveau"] == 1:
-                curseur.execute(
-                    "UPDATE folders SET is_new = 0 WHERE id_folder = %s",
-                    (id_dossier,),
-                )
 
             # N'insérer dans sizes que si la taille a changé
             if taille_en_ko != int(taille_precedente):

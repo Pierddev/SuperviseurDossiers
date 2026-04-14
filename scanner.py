@@ -13,6 +13,7 @@ from db import (
     creer_scan,
     deconnecter_base_de_donnees,
     enregistrer_totaux_scan,
+    reset_statut_nouveaux_dossiers_racines,
     terminer_scan,
     traiter_dossiers_en_lot,
 )
@@ -38,6 +39,9 @@ def scanner() -> None:
         chemins_exclus = [
             c.strip() for c in os.getenv("CHEMINS_EXCLUS", "").split(",") if c.strip()
         ]
+
+        # Réinitialise le tag 'is_new' pour les dossiers appartenant aux racines actuelles
+        reset_statut_nouveaux_dossiers_racines(connexion_mysql, chemins_racines)
 
         nouveaux_dossiers = []
         dossiers_modifies = []
