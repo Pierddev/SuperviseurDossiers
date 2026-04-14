@@ -209,6 +209,7 @@ if __name__ == "__main__":
 
         # Démarrage conditionnel de l'Intranet (interface web)
         intranet_enabled = os.getenv("INTRANET_ENABLED", "0") == "1"
+        debug_mode = False  # Sera mis à True si le mode debug/livereload est activé
         statut_intranet = "❌ Désactivé"
         if intranet_enabled:
             try:
@@ -334,7 +335,9 @@ if __name__ == "__main__":
         print("Le programme est en cours d'execution... Ne fermez pas cette fenetre")
 
         # Boucle infinie pour que le programme continue de tourner
-        # (Si on n'est pas déjà bloqué par le mode Live Reload ci-dessus)
-        while True:
-            schedule.run_pending()
-            time.sleep(delai_verification)
+        # En mode debug, le scheduler tourne déjà dans un thread séparé (lancer_ordonnanceur)
+        # donc on ne lance pas la boucle ici pour éviter un double scan.
+        if not debug_mode:
+            while True:
+                schedule.run_pending()
+                time.sleep(delai_verification)
