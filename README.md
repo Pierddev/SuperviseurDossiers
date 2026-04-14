@@ -153,9 +153,13 @@ python main.py --run-plugin mon_plugin
 
 ### 1. Générer l'exécutable
 
+Il est recommandé d'utiliser le script fourni `exe_generator.bat` qui gère automatiquement l'installation des dépendances et les paramètres PyInstaller complexes.
+
+Si vous souhaitez le faire manuellement :
+
 ```bash
 pip install pyinstaller
-pyinstaller --onefile --name SuperviseurDossiers --icon=icone.ico --hidden-import openpyxl main.py
+pyinstaller --onefile --name SuperviseurDossiers --icon=icone.ico --hidden-import openpyxl --collect-all mysql.connector --add-data "intranet/templates;intranet/templates" --add-data "intranet/static;intranet/static" main.py
 ```
 
 Le fichier `dist/SuperviseurDossiers.exe` est créé.

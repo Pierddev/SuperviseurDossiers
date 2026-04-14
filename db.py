@@ -80,6 +80,7 @@ def connecter_base_de_donnees() -> mysql.connector.MySQLConnection | None:
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASSWORD"),
             database=os.getenv("DB_NAME"),
+            use_pure=True,
         )
     except mysql.connector.Error as err:
         envoyer_notif_teams(f"Erreur de connexion à la base de données : {err}")

@@ -22,13 +22,20 @@ else:
 
 dotenv.load_dotenv(os.path.join(DOSSIER_APP, ".env"))
 
-# Configure le logging pour écrire les erreurs dans un fichier log
-# (essentiellement lorsque les notifications Teams échouent)
+# Configure le logging pour écrire UNIQUEMENT les erreurs dans un fichier log
 logging.basicConfig(
     filename=os.path.join(DOSSIER_APP, "superviseur.log"),
     level=logging.ERROR,
     format="%(asctime)s - %(levelname)s - %(message)s",
+    force=True,
 )
+
+# Désactive les logs d'information des bibliothèques tierces
+logging.getLogger("werkzeug").setLevel(logging.ERROR)
+logging.getLogger("flask").setLevel(logging.ERROR)
+logging.getLogger("livereload").setLevel(logging.ERROR)
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("mysql.connector").setLevel(logging.ERROR)
 
 from db import (
     connecter_base_de_donnees,
@@ -213,6 +220,10 @@ if __name__ == "__main__":
                 # Gestion du mode Debug / Hot-Reload
                 debug_mode = os.getenv("FLASK_DEBUG", "0") == "1"
                 
+                # Désactive le debug_mode (et donc livereload) si on est dans un EXE (Frozen)
+                if getattr(sys, "frozen", False):
+                    debug_mode = False
+
                 if debug_mode:
                     # En mode debug, on utilise livereload pour rafraîchir le navigateur automatiquement
                     # lors des modifications de CSS (style inline dans les templates) ou de fichiers statiques.
@@ -323,8 +334,7 @@ if __name__ == "__main__":
         print("Le programme est en cours d'execution... Ne fermez pas cette fenetre")
 
         # Boucle infinie pour que le programme continue de tourner
-        # (Seulement si non-bloqué par Flask Debug au-dessus)
-        if os.getenv("FLASK_DEBUG", "0") != "1":
-            while True:
-                schedule.run_pending()
-                time.sleep(delai_verification)
+        # (Si on n'est pas déjà bloqué par le mode Live Reload ci-dessus)
+        while True:
+            schedule.run_pending()
+            time.sleep(delai_verification)
