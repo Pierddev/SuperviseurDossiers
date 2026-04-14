@@ -314,26 +314,23 @@ def _enrichir_avec_taille(cur, rows: list[dict], id_scan: int | None) -> list[di
 
 def get_dossiers_racines() -> list[dict]:
     """
-    Retourne uniquement les dossiers racines (définis dans CHEMINS_RACINES du .env)
+    Retourne uniquement les dossiers racines (is_root = 1)
     avec leur taille lors du dernier scan complété.
     Charge UNIQUEMENT ces N chemins — jamais les 200k dossiers.
     """
     chemins_racines = [
-        c.strip()
+        os.path.normpath(c.strip())
         for c in os.getenv("CHEMINS_RACINES", "").split(",")
         if c.strip()
     ]
-    if not chemins_racines:
-        return []
 
     conn = get_connexion()
     if not conn:
         return []
     try:
         cur = conn.cursor(dictionary=True)
-        placeholders = ",".join(["%s"] * len(chemins_racines))
         cur.execute(
-            f"""
+            """
             SELECT
                 f.id_folder, f.path, f.is_new,
                 COALESCE((
@@ -342,13 +339,19 @@ def get_dossiers_racines() -> list[dict]:
                     ORDER BY sz.id_scan DESC LIMIT 1
                 ), 0) AS size_kb
             FROM folders f
-            WHERE f.path IN ({placeholders})
+            WHERE f.is_root = 1
             ORDER BY f.path
-            """,
-            (*chemins_racines,),
+            """
         )
         rows = cur.fetchall()
-        return _enrichir_avec_taille(cur, rows, None)
+        result = _enrichir_avec_taille(cur, rows, None)
+        
+        for r in result:
+            r["is_archived"] = os.path.normpath(r["path"]) not in chemins_racines
+            
+        # Trie : Actifs en premier, archivés ensuite. Puis par ordre alphabétique
+        result.sort(key=lambda x: (x["is_archived"], x["path"]))
+        return result
     except mysql.connector.Error:
         return []
     finally:

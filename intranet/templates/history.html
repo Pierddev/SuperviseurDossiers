@@ -80,7 +80,7 @@
             {% for r in racines %}
             {# Pas d'apostrophe dans onclick pour éviter les conflits — on passe data-* et on lit en JS #}
             <div class="folder-node">
-                <div class="folder-item rounded-md px-2 py-1.5 mb-0.5 flex items-center gap-2"
+                <div class="folder-item rounded-md px-2 py-1.5 mb-0.5 flex items-center gap-2 {% if r.is_archived %}opacity-60{% endif %}"
                      style="padding-left:8px;"
                      data-id="{{ r.id_folder }}"
                      data-path="{{ r.path }}"
@@ -109,6 +109,7 @@
                     </div>
                     <span class="text-[10px] text-gray-600 flex-shrink-0">{{ r.size_kb | format_size }}</span>
                     {% if r.is_new %}<span class="text-[9px] bg-primary-900/80 text-primary-300 border border-primary-800 px-1 rounded">NEW</span>{% endif %}
+                    {% if r.is_archived %}<span class="text-[9px] bg-gray-800 text-gray-400 border border-gray-700 px-1 rounded" title="Dossier non scanné">ARCHIVÉ</span>{% endif %}
                 </div>
                 <!-- Zone enfants injectée dynamiquement -->
                 <div class="children-wrap" id="children-{{ r.id_folder }}"></div>

@@ -16,6 +16,7 @@ from db import (
     reset_statut_nouveaux_dossiers_racines,
     terminer_scan,
     traiter_dossiers_en_lot,
+    marquer_dossiers_comme_racines,
 )
 from fichiers import filtrer_dossiers_redondants, scanner_arborescence
 from notifications import envoyer_notif_teams
@@ -77,6 +78,9 @@ def scanner() -> None:
         enregistrer_totaux_scan(
             connexion_mysql, id_scan, total_dossiers_scannes, taille_totale_racines_ko
         )
+
+        # Assurer que les dossiers racines sont bien marqués dans la BDD
+        marquer_dossiers_comme_racines(connexion_mysql, chemins_racines)
 
         # Filtre les dossiers parents redondants pour la notification
         nouveaux_dossiers = filtrer_dossiers_redondants(nouveaux_dossiers)

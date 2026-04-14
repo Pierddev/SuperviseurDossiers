@@ -168,6 +168,33 @@ def reset_statut_nouveaux_dossiers_racines(
         envoyer_notif_teams(f"Erreur lors de la réinitialisation des tags 'new' : {err}")
 
 
+def marquer_dossiers_comme_racines(
+    connexion_mysql: mysql.connector.MySQLConnection, chemins_racines: list[str]
+) -> None:
+    """
+    Marque les dossiers de la liste en tant que racines (is_root = 1).
+    Ceci permet de toujours les afficher dans l'Intranet même s'ils ne
+    sont plus activement scannés.
+    """
+    if not chemins_racines:
+        return
+
+    try:
+        curseur = connexion_mysql.cursor()
+        for racine in chemins_racines:
+            racine = racine.strip()
+            if racine:
+                racine_norm = os.path.normpath(racine)
+                curseur.execute(
+                    "UPDATE folders SET is_root = 1 WHERE path = %s",
+                    (racine_norm,)
+                )
+        connexion_mysql.commit()
+        curseur.close()
+    except mysql.connector.Error as err:
+        envoyer_notif_teams(f"Erreur lors de la mise à jour des racines : {err}")
+
+
 def enregistrer_totaux_scan(
     connexion_mysql: mysql.connector.MySQLConnection,
     id_scan: int,

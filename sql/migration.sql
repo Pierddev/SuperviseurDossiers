@@ -24,6 +24,7 @@ CREATE TABLE folders (
     id_folder  BIGINT       NOT NULL AUTO_INCREMENT,
     path       VARCHAR(512) NOT NULL,
     is_new     TINYINT(1)   NOT NULL DEFAULT 1,
+    is_root    TINYINT(1)   NOT NULL DEFAULT 0,
     PRIMARY KEY (id_folder),
     UNIQUE KEY uq_path (path)
 );
