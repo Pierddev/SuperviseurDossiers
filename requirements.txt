@@ -13,4 +13,7 @@ requests==2.33.1
 schedule==1.2.2
 setuptools==82.0.1
 urllib3==2.6.3
-openpyxl==3.1.5
+openpyxl==3.1.2
+flask==3.1.1
+flask-login==0.6.3
+livereload==2.7.1

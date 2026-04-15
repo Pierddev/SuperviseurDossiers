@@ -1,0 +1,641 @@
+{% extends "layout.html" %}
+
+{% block title %}Historique des dossiers — SuperviseurDossiers{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<style>
+    .folder-item {
+        transition: background 0.12s ease;
+        cursor: pointer;
+        border-left: 2px solid transparent;
+    }
+    .folder-item:hover  { background: rgba(99,102,241,.08); border-left-color: rgba(99,102,241,.4); }
+    .folder-item.active { background: rgba(99,102,241,.15); border-left-color: #6366f1; }
+
+    .children-wrap {
+        overflow: hidden;
+        display: none;
+    }
+    .children-wrap.open { display: block; }
+
+    #folder-tree::-webkit-scrollbar { width: 4px; }
+    #folder-tree::-webkit-scrollbar-track { background: transparent; }
+    #folder-tree::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 2px; }
+
+    /* Search dropdown */
+    #search-results {
+        max-height: 320px;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #4f46e5 transparent;
+    }
+    #search-results::-webkit-scrollbar { width: 4px; }
+    #search-results::-webkit-scrollbar-track { background: transparent; }
+    #search-results::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 2px; }
+    .search-result-item {
+        cursor: pointer;
+        transition: background 0.1s ease;
+    }
+    .search-result-item:hover { background: rgba(99,102,241,.12); }
+    .search-highlight { color: #a5b4fc; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex" style="height:calc(100vh - 0px);">
+
+    <!-- ── Panneau gauche : arborescence ── -->
+    <aside id="sidebar" class="w-80 min-w-[250px] max-w-[600px] overflow-hidden flex flex-col bg-gray-900/50 flex-shrink-0">
+        <div class="p-4 border-b border-gray-800">
+            <h2 class="text-sm font-semibold text-white mb-2">Arborescence</h2>
+            <div class="relative">
+                <input type="text" id="search-input" placeholder="Rechercher un chemin…"
+                    autocomplete="off"
+                    class="w-full bg-gray-800 border border-gray-700 text-gray-200 text-xs rounded-lg
+                           pl-8 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-primary-600
+                           placeholder-gray-500 transition-all">
+                <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500"
+                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <!-- Bouton clear -->
+                <button id="search-clear" class="absolute right-2 top-1/2 -translate-y-1/2 hidden text-gray-500 hover:text-gray-300 transition-colors"
+                        type="button">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <!-- Dropdown résultats de recherche -->
+            <div id="search-results" class="hidden mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl overflow-hidden">
+            </div>
+        </div>
+
+        <div id="folder-tree" class="flex-1 overflow-y-auto p-2">
+            {% if not racines %}
+            <p class="text-xs text-gray-600 text-center mt-8">Aucun chemin racine trouvé en BDD.<br>Lancez d'abord un scan.</p>
+            {% else %}
+            {% for r in racines %}
+            {# Pas d'apostrophe dans onclick pour éviter les conflits — on passe data-* et on lit en JS #}
+            <div class="folder-node">
+                <div class="folder-item rounded-md px-2 py-1.5 mb-0.5 flex items-center gap-2 {% if r.is_archived or r.is_deleted %}opacity-60{% endif %}"
+                     style="padding-left:8px;"
+                     data-id="{{ r.id_folder }}"
+                     data-path="{{ r.path }}"
+                     data-depth="0"
+                     data-has-children="{{ 'true' if r.has_children else 'false' }}"
+                     data-expanded="false"
+                     onclick="handleFolderClick(this)">
+
+                    <!-- Flèche expand (visible si has_children) -->
+                    <svg class="chevron w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200
+                                {% if not r.has_children %}opacity-0{% else %}text-gray-500{% endif %}"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+
+                    <svg class="w-4 h-4 flex-shrink-0 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                    </svg>
+
+                    <!-- Nom du dossier -->
+                    <div class="flex-1 min-w-0">
+                        <span class="text-xs text-gray-300 block truncate font-mono folder-name-text">
+                            {{ r.path.split('\\')|last if r.path.split('\\')|last != '' else r.path }}
+                        </span>
+                    </div>
+                    <span class="text-[10px] text-gray-600 flex-shrink-0">{{ r.size_kb | format_size }}</span>
+                    {% if r.is_new %}<span class="text-[9px] bg-primary-900/80 text-primary-300 border border-primary-800 px-1 rounded">NEW</span>{% endif %}
+                    {% if r.is_deleted %}<span class="text-[9px] bg-red-900/80 text-red-300 border border-red-800 px-1 rounded">SUPPRIMÉ</span>{% endif %}
+                    {% if r.is_archived %}<span class="text-[9px] bg-gray-800 text-gray-400 border border-gray-700 px-1 rounded" title="Dossier non scanné">ARCHIVÉ</span>{% endif %}
+                </div>
+                <!-- Zone enfants injectée dynamiquement -->
+                <div class="children-wrap" id="children-{{ r.id_folder }}"></div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </aside>
+
+    <!-- Poignée de redimensionnement (Resizer) -->
+    <div id="resizer" class="w-1.5 flex-shrink-0 bg-gray-800 hover:bg-primary-500 cursor-col-resize transition-colors z-10"></div>
+
+    <!-- ── Panneau droit : graphique ── -->
+    <main class="flex-1 flex flex-col overflow-hidden p-6">
+
+        <div id="placeholder" class="flex-1 flex flex-col items-center justify-center text-center">
+            <div class="w-16 h-16 bg-gray-800 rounded-2xl flex items-center justify-center mb-4">
+                <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+            </div>
+            <p class="text-gray-500 text-sm font-medium">Sélectionnez un dossier</p>
+            <p class="text-gray-600 text-xs mt-1">L'historique de sa taille s'affichera ici</p>
+        </div>
+
+        <div id="chart-container" class="hidden flex-1 flex flex-col overflow-y-auto">
+            <div class="mb-4 flex items-start justify-between gap-4 flex-shrink-0">
+                <div class="min-w-0">
+                    <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Dossier sélectionné</p>
+                    <div class="flex items-center gap-3">
+                        <h2 id="chart-title" class="text-base font-semibold text-white font-mono truncate"></h2>
+                    </div>
+                </div>
+                <div class="flex gap-3 flex-shrink-0">
+                    <div class="bg-gray-800 rounded-lg px-4 py-2 text-center">
+                        <p class="text-[10px] text-gray-500 uppercase tracking-wider">Taille actuelle</p>
+                        <p id="current-size" class="text-lg font-bold text-white mt-0.5">—</p>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg px-4 py-2 text-center">
+                        <p class="text-[10px] text-gray-500 uppercase tracking-wider">Variation</p>
+                        <p id="size-delta" class="text-lg font-bold mt-0.5">—</p>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg px-4 py-2 text-center">
+                        <p class="text-[10px] text-gray-500 uppercase tracking-wider">Points</p>
+                        <p id="scan-count" class="text-lg font-bold text-white mt-0.5">—</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Graphique -->
+            <div class="bg-gray-900 border border-gray-800 rounded-xl p-4 flex-shrink-0 mb-6 flex flex-col relative" style="height: 320px;">
+                <div class="flex justify-end mb-2 z-10">
+                    <div class="flex space-x-1 bg-gray-800/80 backdrop-blur-sm p-1 rounded-lg border border-gray-700/50">
+                        <button class="time-filter-btn px-3 py-1 text-[11px] font-medium rounded-md text-gray-400 hover:text-white transition-colors" data-value="7">7 jours</button>
+                        <button class="time-filter-btn px-3 py-1 text-[11px] font-medium rounded-md bg-gray-700 text-white shadow-sm transition-colors" data-value="30">30 jours</button>
+                        <button class="time-filter-btn px-3 py-1 text-[11px] font-medium rounded-md text-gray-400 hover:text-white transition-colors" data-value="ytd">Cette année</button>
+                        <button class="time-filter-btn px-3 py-1 text-[11px] font-medium rounded-md text-gray-400 hover:text-white transition-colors" data-value="365">1 an</button>
+                    </div>
+                </div>
+                <!-- Le canvas prend le reste de l'espace -->
+                <div class="flex-1 relative">
+                    <canvas id="history-chart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Tableau détaillé -->
+            <div class="bg-gray-900 border border-gray-800 rounded-xl flex-1 overflow-hidden flex flex-col mb-4">
+                <div class="p-4 border-b border-gray-800 bg-gray-900">
+                    <h3 id="table-title" class="text-sm font-semibold text-white">Historique détaillé</h3>
+                </div>
+                <div class="overflow-y-auto w-full">
+                    <table class="w-full text-left text-xs text-gray-400">
+                        <thead class="bg-gray-800/80 backdrop-blur-sm text-gray-500 uppercase sticky top-0">
+                            <tr>
+                                <th class="px-6 py-3 font-medium">Date</th>
+                                <th class="px-6 py-3 font-medium text-right">Taille</th>
+                                <th class="px-6 py-3 font-medium text-right">Variation</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="divide-y divide-gray-800/50">
+                            <!-- JS Inject -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="chart-loader" class="hidden flex-1 flex items-center justify-center">
+            <div class="flex flex-col items-center gap-3">
+                <div class="w-8 h-8 border-2 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-gray-500 text-xs">Chargement…</p>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Global Tooltip JS pour ne pas être coupé par overflow -->
+<div id="global-tooltip" class="fixed hidden z-[9999] pointer-events-none w-max max-w-[350px]">
+    <div class="bg-gray-800 text-gray-200 text-[11px] font-mono py-1.5 px-3 rounded shadow-xl border border-gray-700 whitespace-normal break-all">
+        <!-- Content injected by JS -->
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let chartInstance = null;
+let activeItem = null;
+let currentFolderId = null;
+let currentFolderPath = null;
+let currentPeriode = "30";
+
+// ── Clic sur un dossier ──────────────────────────────────────────────
+function handleFolderClick(el) {
+    const id          = el.dataset.id;
+    const path        = el.dataset.path;
+    const hasChildren = el.dataset.hasChildren === 'true';
+    const expanded    = el.dataset.expanded === 'true';
+    const depth       = parseInt(el.dataset.depth, 10);
+
+    // Highlight
+    if (activeItem) activeItem.classList.remove('active');
+    el.classList.add('active');
+    activeItem = el;
+
+    // --- Toggle enfants ---
+    if (hasChildren) {
+        const childWrap = document.getElementById('children-' + id);
+        const chevron   = el.querySelector('.chevron');
+
+        if (expanded) {
+            // Réduire
+            childWrap.classList.remove('open');
+            chevron.style.transform = '';
+            el.dataset.expanded = 'false';
+        } else {
+            // Étendre : charger les enfants si pas encore chargés
+            if (!childWrap.dataset.loaded) {
+                loadChildren(childWrap, path, depth + 1);
+            }
+            childWrap.classList.add('open');
+            chevron.style.transform = 'rotate(90deg)';
+            el.dataset.expanded = 'true';
+        }
+    }
+
+    // --- Graphique historique ---
+    loadChart(id, path);
+}
+
+// ── Chargement des enfants via API ───────────────────────────────────
+function loadChildren(wrapEl, parentPath, depth) {
+    wrapEl.innerHTML = '<div class="text-[10px] text-gray-600 px-6 py-1.5 animate-pulse">Chargement…</div>';
+
+    fetch('/api/enfants?path=' + encodeURIComponent(parentPath))
+        .then(r => r.json())
+        .then(items => {
+            wrapEl.innerHTML = '';
+            if (!items || items.length === 0) {
+                wrapEl.innerHTML = '<div class="text-[10px] text-gray-700 px-10 py-1">Aucun sous-dossier</div>';
+                return;
+            }
+            items.forEach(item => {
+                const name   = item.path.split('\\').pop();
+                const indent = 8 + depth * 16;
+
+                const node = document.createElement('div');
+                node.className = 'folder-node';
+                node.innerHTML = `
+                    <div class="folder-item rounded-md px-2 py-1.5 mb-0.5 flex items-center gap-2 ${item.is_deleted ? 'opacity-60' : ''}"
+                         style="padding-left:${indent}px;"
+                         data-id="${item.id_folder}"
+                         data-path="${item.path}"
+                         data-depth="${depth}"
+                         data-has-children="${item.has_children}"
+                         data-expanded="false"
+                         onclick="handleFolderClick(this)">
+                        <svg class="chevron w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${item.has_children ? 'text-gray-500' : 'opacity-0'}"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                        <svg class="w-4 h-4 flex-shrink-0 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                        </svg>
+                        
+                        <!-- Nom du dossier -->
+                        <div class="flex-1 min-w-0">
+                            <span class="text-xs text-gray-300 block truncate font-mono folder-name-text">${name || item.path}</span>
+                        </div>
+                        <span class="text-[10px] text-gray-600 flex-shrink-0">${window.formatSize(item.size_kb)}</span>
+                        ${item.is_new ? '<span class="text-[9px] bg-primary-900/80 text-primary-300 border border-primary-800 px-1 rounded">NEW</span>' : ''}
+                        ${item.is_deleted ? '<span class="text-[9px] bg-red-900/80 text-red-300 border border-red-800 px-1 rounded">SUPPRIMÉ</span>' : ''}
+                    </div>
+                    <div class="children-wrap" id="children-${item.id_folder}"></div>
+                `;
+                wrapEl.appendChild(node);
+            });
+            wrapEl.dataset.loaded = 'true';
+        })
+        .catch(() => {
+            wrapEl.innerHTML = '<div class="text-[10px] text-red-500 px-10 py-1">Erreur de chargement</div>';
+        });
+}
+
+
+
+// ── Graphique Chart.js ────────────────────────────────────────────────
+function loadChart(id, path) {
+    currentFolderId = id;
+    currentFolderPath = path;
+
+    document.getElementById('placeholder').classList.add('hidden');
+    document.getElementById('chart-container').classList.add('hidden');
+    document.getElementById('chart-loader').classList.remove('hidden');
+
+    fetch('/api/historique/' + id + '?periode=' + currentPeriode)
+        .then(r => r.json())
+        .then(data => renderChart(data, path))
+        .catch(() => {
+            document.getElementById('chart-loader').classList.add('hidden');
+            document.getElementById('placeholder').classList.remove('hidden');
+        });
+}
+
+function renderChart(data, path) {
+    document.getElementById('chart-loader').classList.add('hidden');
+
+    if (!data || !data.labels || data.labels.length === 0) {
+        document.getElementById('placeholder').classList.remove('hidden');
+        return;
+    }
+
+    document.getElementById('chart-container').classList.remove('hidden');
+
+    const current = data.history_table[0].size_kb;
+    const delta   = data.history_table[0].delta_kb;
+    const deltaEl = document.getElementById('size-delta');
+
+    document.getElementById('chart-title').textContent  = path;
+    document.getElementById('current-size').textContent = window.formatSize(current);
+    document.getElementById('scan-count').textContent   = data.labels.length;
+    
+    const sign = delta > 0 ? '+' : '';
+    deltaEl.textContent  = sign + window.formatSize(delta);
+    deltaEl.className    = 'text-lg font-bold mt-0.5 ' + (delta > 0 ? 'text-red-400' : delta < 0 ? 'text-green-400' : 'text-gray-400');
+
+    if (chartInstance) chartInstance.destroy();
+
+    const ctx = document.getElementById('history-chart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 350);
+    gradient.addColorStop(0, 'rgba(99,102,241,.35)');
+    gradient.addColorStop(1, 'rgba(99,102,241,.01)');
+
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: 'Taille (Mo)',
+                data: data.data,
+                borderColor: '#6366f1',
+                backgroundColor: gradient,
+                borderWidth: 2.5,
+                pointRadius: data.data.length <= 20 ? 4 : 2,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#6366f1',
+                pointBorderColor: '#1f2937',
+                pointBorderWidth: 2,
+                fill: true,
+                tension: 0.4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1f2937',
+                    borderColor: '#374151',
+                    borderWidth: 1,
+                    titleColor: '#9ca3af',
+                    bodyColor: '#f9fafb',
+                    titleFont: { size: 11 },
+                    bodyFont: { size: 13, weight: 'bold' },
+                    padding: 10,
+                    callbacks: { label: ctx => ' ' + ctx.parsed.y + ' Mo' }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255,255,255,.04)' },
+                    ticks: { color: '#6b7280', font: { size: 10 }, maxTicksLimit: 10, maxRotation: 30 }
+                },
+                y: {
+                    grid: { color: 'rgba(255,255,255,.04)' },
+                    ticks: { color: '#6b7280', font: { size: 11 }, callback: v => v + ' Mo' }
+                }
+            }
+        }
+    });
+
+    // --- Mise à jour du tableau ---
+    const tbody = document.getElementById('history-table-body');
+    tbody.innerHTML = '';
+    
+    // Mise à jour du titre du tableau
+    let textPeriode = "30 derniers jours";
+    if (currentPeriode === "7") textPeriode = "7 derniers jours";
+    else if (currentPeriode === "365") textPeriode = "365 derniers jours";
+    else if (currentPeriode === "ytd") textPeriode = "cette année";
+    document.getElementById('table-title').textContent = "Historique détaillé (" + textPeriode + ")";
+    
+    if (data.history_table && data.history_table.length > 0) {
+        data.history_table.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-gray-800/20";
+            
+            let deltaHtml = '<span class="text-gray-500">-</span>';
+            if (r.delta_kb > 0) {
+                deltaHtml = `<span class="text-red-400 font-medium">+${window.formatSize(r.delta_kb)}</span>`;
+            } else if (r.delta_kb < 0) {
+                deltaHtml = `<span class="text-green-400 font-medium">${window.formatSize(r.delta_kb)}</span>`;
+            } else if (r.delta_kb === 0) {
+                deltaHtml = `<span class="text-gray-500 font-medium">${window.formatSize(0)}</span>`;
+            }
+            
+            tr.innerHTML = `
+                <td class="px-6 py-3 whitespace-nowrap text-gray-300 font-mono">${r.date}</td>
+                <td class="px-6 py-3 whitespace-nowrap text-right font-mono">${window.formatSize(r.size_kb)}</td>
+                <td class="px-6 py-3 whitespace-nowrap text-right font-mono">${deltaHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } else {
+        tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Aucune donnée trouvée.</td></tr>';
+    }
+}
+
+// Gestion du changement de filtre
+document.querySelectorAll('.time-filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        // Enlève l'état actif de tous les boutons
+        document.querySelectorAll('.time-filter-btn').forEach(b => {
+            b.classList.remove('bg-gray-700', 'text-white', 'shadow-sm');
+            b.classList.add('text-gray-400', 'hover:text-white');
+        });
+        
+        // Applique l'état actif au bouton cliqué
+        this.classList.remove('text-gray-400', 'hover:text-white');
+        this.classList.add('bg-gray-700', 'text-white', 'shadow-sm');
+
+        currentPeriode = this.dataset.value;
+        if (currentFolderId && currentFolderPath) {
+            loadChart(currentFolderId, currentFolderPath);
+        }
+    });
+});
+
+// ── Recherche via API avec debounce ───────────────────────────────────
+const searchInput     = document.getElementById('search-input');
+const searchResults   = document.getElementById('search-results');
+const searchClear     = document.getElementById('search-clear');
+const folderTree      = document.getElementById('folder-tree');
+let   searchTimer     = null;
+let   searchAbort     = null;
+
+function highlightMatch(path, query) {
+    // Échappe les caractères spéciaux regex dans la query
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp('(' + escaped + ')', 'gi');
+    // Échappe le HTML du path d'abord, puis applique le highlight
+    const safe = path.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return safe.replace(regex, '<span class="search-highlight">$1</span>');
+}
+
+function showSearchResults(items, query) {
+    if (!items || items.length === 0) {
+        searchResults.innerHTML = '<div class="text-[11px] text-gray-500 px-3 py-3 text-center">Aucun résultat</div>';
+        searchResults.classList.remove('hidden');
+        folderTree.classList.add('hidden');
+        return;
+    }
+    searchResults.innerHTML = items.map(item => {
+        const highlighted = highlightMatch(item.path, query);
+        const size = window.formatSize(item.size_kb);
+        return `
+            <div class="search-result-item px-3 py-2 border-b border-gray-700/50 flex items-center gap-2"
+                 data-id="${item.id_folder}" data-path="${item.path.replace(/"/g, '&quot;')}">
+                <svg class="w-3.5 h-3.5 flex-shrink-0 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                </svg>
+                <div class="flex-1 min-w-0">
+                    <span class="text-[11px] text-gray-300 font-mono block truncate">${highlighted}</span>
+                </div>
+                <span class="text-[10px] text-gray-600 flex-shrink-0">${size}</span>
+            </div>
+        `;
+    }).join('');
+    searchResults.classList.remove('hidden');
+    folderTree.classList.add('hidden');
+
+    // Clic sur un résultat → charger le graphique
+    searchResults.querySelectorAll('.search-result-item').forEach(el => {
+        el.addEventListener('click', () => {
+            const id   = el.dataset.id;
+            const path = el.dataset.path;
+            loadChart(id, path);
+            clearSearch();
+        });
+    });
+}
+
+function clearSearch() {
+    searchInput.value = '';
+    searchResults.classList.add('hidden');
+    searchResults.innerHTML = '';
+    folderTree.classList.remove('hidden');
+    searchClear.classList.add('hidden');
+}
+
+searchInput.addEventListener('input', function () {
+    const q = this.value.trim();
+
+    // Affiche/cache le bouton clear
+    searchClear.classList.toggle('hidden', q.length === 0);
+
+    // Annule la requête précédente
+    if (searchTimer) clearTimeout(searchTimer);
+    if (searchAbort) searchAbort.abort();
+
+    if (q.length < 2) {
+        searchResults.classList.add('hidden');
+        folderTree.classList.remove('hidden');
+        return;
+    }
+
+    // Debounce 300ms
+    searchTimer = setTimeout(() => {
+        searchAbort = new AbortController();
+        // Indicateur de chargement
+        searchResults.innerHTML = '<div class="text-[11px] text-gray-500 px-3 py-3 text-center animate-pulse">Recherche…</div>';
+        searchResults.classList.remove('hidden');
+        folderTree.classList.add('hidden');
+
+        fetch('/api/recherche?q=' + encodeURIComponent(q), { signal: searchAbort.signal })
+            .then(r => r.json())
+            .then(items => showSearchResults(items, q))
+            .catch(err => {
+                if (err.name !== 'AbortError') {
+                    searchResults.innerHTML = '<div class="text-[11px] text-red-400 px-3 py-3 text-center">Erreur de recherche</div>';
+                }
+            });
+    }, 300);
+});
+
+searchClear.addEventListener('click', clearSearch);
+
+// Ferme la recherche avec Échap
+searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') clearSearch();
+});
+
+// ── Redimensionnement du panneau latéral ────────────────────────────
+const resizer = document.getElementById('resizer');
+const sidebar = document.getElementById('sidebar');
+let isResizing = false;
+
+resizer.addEventListener('mousedown', function(e) {
+    isResizing = true;
+    document.body.style.cursor = 'col-resize';
+    e.preventDefault(); // Empêche la sélection de texte accidentelle
+});
+
+document.addEventListener('mousemove', function(e) {
+    if (!isResizing) return;
+    // sidebar.getBoundingClientRect().left permet de déduire la taille du menu principal (nav) situé à gauche
+    let newWidth = e.clientX - sidebar.getBoundingClientRect().left;
+    // Contraintes de largeur (mini 250px, maxi 600px)
+    if (newWidth < 250) newWidth = 250;
+    if (newWidth > 600) newWidth = 600;
+    sidebar.style.width = newWidth + 'px';
+});
+
+document.addEventListener('mouseup', function() {
+    isResizing = false;
+    document.body.style.cursor = '';
+});
+// ── Tooltip Global de survol (évite d'être coupé par overflow) ──────
+const globalTooltip = document.getElementById('global-tooltip');
+const tooltipInner  = globalTooltip.querySelector('div');
+const sidebarEl     = document.getElementById('sidebar');
+
+sidebarEl.addEventListener('mouseover', function(e) {
+    const item = e.target.closest('.folder-item, .search-result-item');
+    if (!item) return;
+    const path = item.dataset.path;
+    if (path) {
+        tooltipInner.textContent = path;
+        globalTooltip.style.display = 'block';
+    }
+});
+
+sidebarEl.addEventListener('mousemove', function(e) {
+    if (globalTooltip.style.display === 'block') {
+        globalTooltip.style.left = (e.clientX + 15) + 'px';
+        globalTooltip.style.top = (e.clientY + 15) + 'px';
+    }
+});
+
+sidebarEl.addEventListener('mouseout', function(e) {
+    globalTooltip.style.display = 'none';
+});
+// --- Gestion du dossier passé en URL (ex: via dashboard) ---
+window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const folderId = params.get('id');
+    const folderPath = params.get('path');
+    if (folderId && folderPath) {
+        loadChart(folderId, folderPath);
+    }
+});
+</script>
+{% endblock %}

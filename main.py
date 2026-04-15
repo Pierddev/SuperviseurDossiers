@@ -7,6 +7,7 @@ import argparse
 import logging
 import os
 import sys
+import threading
 import time
 from datetime import datetime
 
@@ -21,13 +22,20 @@ else:
 
 dotenv.load_dotenv(os.path.join(DOSSIER_APP, ".env"))
 
-# Configure le logging pour écrire les erreurs dans un fichier log
-# (essentiellement lorsque les notifications Teams échouent)
+# Configure le logging pour écrire UNIQUEMENT les erreurs dans un fichier log
 logging.basicConfig(
     filename=os.path.join(DOSSIER_APP, "superviseur.log"),
     level=logging.ERROR,
     format="%(asctime)s - %(levelname)s - %(message)s",
+    force=True,
 )
+
+# Désactive les logs d'information des bibliothèques tierces
+logging.getLogger("werkzeug").setLevel(logging.ERROR)
+logging.getLogger("flask").setLevel(logging.ERROR)
+logging.getLogger("livereload").setLevel(logging.ERROR)
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("mysql.connector").setLevel(logging.ERROR)
 
 from db import (
     connecter_base_de_donnees,
@@ -130,6 +138,8 @@ if __name__ == "__main__":
     else:
         # Mode planifié (comportement par défaut)
         heure_scan = os.getenv("HEURE_SCAN", "17:30")
+
+        # Planification du scan
         schedule.every().day.at(heure_scan).do(scanner)
 
         delai_verification = int(os.getenv("DELAI_VERIFICATION", 300))
@@ -197,6 +207,64 @@ if __name__ == "__main__":
             print("ℹ️ Aucun plugin chargé.")
         print("-" * 60)
 
+        # Démarrage conditionnel de l'Intranet (interface web)
+        intranet_enabled = os.getenv("INTRANET_ENABLED", "0") == "1"
+        debug_mode = False  # Sera mis à True si le mode debug/livereload est activé
+        statut_intranet = "❌ Désactivé"
+        if intranet_enabled:
+            try:
+                from intranet.app import creer_app
+
+                intra_port = int(os.getenv("INTRA_PORT", 5000))
+                app = creer_app()
+
+                # Gestion du mode Debug / Hot-Reload
+                debug_mode = os.getenv("FLASK_DEBUG", "0") == "1"
+                
+                # Désactive le debug_mode (et donc livereload) si on est dans un EXE (Frozen)
+                if getattr(sys, "frozen", False):
+                    debug_mode = False
+
+                if debug_mode:
+                    # En mode debug, on utilise livereload pour rafraîchir le navigateur automatiquement
+                    # lors des modifications de CSS (style inline dans les templates) ou de fichiers statiques.
+                    from livereload import Server
+                    
+                    # On lance l'ordonnanceur dans un thread séparé (uniquement dans le processus principal de livereload)
+                    def lancer_ordonnanceur():
+                        print("⏱️  Ordonnanceur de scan démarré en arrière-plan")
+                        while True:
+                            schedule.run_pending()
+                            time.sleep(delai_verification)
+                            
+                    thread_scan = threading.Thread(target=lancer_ordonnanceur, daemon=True)
+                    thread_scan.start()
+
+                    server = Server(app.wsgi_app)
+                    
+                    # Surveiller les templates et les fichiers statiques
+                    server.watch(os.path.join(DOSSIER_APP, "intranet", "templates"))
+                    server.watch(os.path.join(DOSSIER_APP, "intranet", "static"))
+                    
+                    statut_intranet = f"✅ Actif (LIVE RELOAD) sur le port {intra_port}"
+                    print(f"🌐 Intranet démarré sur http://0.0.0.0:{intra_port} (Live Reload actif)")
+                    
+                    # Server.serve bloque l'exécution
+                    server.serve(port=intra_port, host="0.0.0.0")
+                else:
+                    # Mode production / normal : Flask en arrière-plan
+                    thread_intranet = threading.Thread(
+                        target=app.run,
+                        kwargs={"host": "0.0.0.0", "port": intra_port, "debug": False},
+                        daemon=True,
+                    )
+                    thread_intranet.start()
+                    statut_intranet = f"✅ Actif sur le port {intra_port}"
+                    print(f"🌐 Intranet démarré sur http://0.0.0.0:{intra_port}")
+            except Exception as e:
+                statut_intranet = f"❌ Erreur ({e})"
+                print(f"❌ Erreur lors du démarrage de l'Intranet : {e}")
+
         # Planifie la vérification périodique des chemins manquants si nécessaire
         if chemins_manquants:
             schedule.every(10).minutes.do(verifier_chemins_manquants, chemins_manquants)
@@ -247,7 +315,8 @@ if __name__ == "__main__":
             f"📅 **Date** : {datetime.now().strftime('%d/%m/%Y à %H:%M')}<br>"
             f"⏱️ **Prochain scan** : {heure_scan}<br>"
             f"🗄️ **Base de données** : {statut_bdd_emoji}<br>"
-            f"🔌 **Plugins** : {statut_plugins}<br><br>"
+            f"🔌 **Plugins** : {statut_plugins}<br>"
+            f"🌐 **Intranet** : {statut_intranet}<br><br>"
             f"📁 **État des chemins racines** :<br>"
         )
 
@@ -266,6 +335,9 @@ if __name__ == "__main__":
         print("Le programme est en cours d'execution... Ne fermez pas cette fenetre")
 
         # Boucle infinie pour que le programme continue de tourner
-        while True:
-            schedule.run_pending()
-            time.sleep(delai_verification)
+        # En mode debug, le scheduler tourne déjà dans un thread séparé (lancer_ordonnanceur)
+        # donc on ne lance pas la boucle ici pour éviter un double scan.
+        if not debug_mode:
+            while True:
+                schedule.run_pending()
+                time.sleep(delai_verification)

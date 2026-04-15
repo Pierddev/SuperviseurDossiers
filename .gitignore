@@ -9,5 +9,6 @@ superviseur.log
 # Custom plugins (not versioned)
 plugins/
 !plugins/.gitkeep
-*.bat
+test_notif.bat
 test_notifications.py
+design/
