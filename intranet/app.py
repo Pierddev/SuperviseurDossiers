@@ -369,7 +369,6 @@ def creer_app() -> Flask:
                 password=password,
                 database=db_name,
                 connect_timeout=5,
-                use_pure=True,
             )
             conn.close()
             return jsonify(
