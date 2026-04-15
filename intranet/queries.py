@@ -461,28 +461,55 @@ def get_historique_dossier(id_folder: int, periode: str = "30") -> dict:
             return {}
 
         # Historique des tailles par scan (période variable)
-        date_condition = "AND sc.date_ >= DATE_SUB(NOW(), INTERVAL 30 DAY)"
-        if periode == "7":
-            date_condition = "AND sc.date_ >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
-        elif periode == "365":
-            date_condition = "AND sc.date_ >= DATE_SUB(NOW(), INTERVAL 365 DAY)"
-        elif periode == "ytd":
-            date_condition = "AND YEAR(sc.date_) = YEAR(NOW())"
+        # Whitelist des périodes autorisées pour éviter l'injection SQL
+        periodes_valides = {"7", "30", "365"}
 
-        cur.execute(
-            f"""
-            SELECT
-                sc.date_,
-                sz.size_kb
-            FROM sizes sz
-            JOIN scans sc ON sz.id_scan = sc.id_scan
-            WHERE sz.id_folder = %s
-              AND sc.status = 'completed'
-              {date_condition}
-            ORDER BY sc.date_ ASC
-            """,
-            (id_folder,),
-        )
+        if periode in periodes_valides:
+            cur.execute(
+                """
+                SELECT
+                    sc.date_,
+                    sz.size_kb
+                FROM sizes sz
+                JOIN scans sc ON sz.id_scan = sc.id_scan
+                WHERE sz.id_folder = %s
+                  AND sc.status = 'completed'
+                  AND sc.date_ >= DATE_SUB(NOW(), INTERVAL %s DAY)
+                ORDER BY sc.date_ ASC
+                """,
+                (id_folder, int(periode)),
+            )
+        elif periode == "ytd":
+            cur.execute(
+                """
+                SELECT
+                    sc.date_,
+                    sz.size_kb
+                FROM sizes sz
+                JOIN scans sc ON sz.id_scan = sc.id_scan
+                WHERE sz.id_folder = %s
+                  AND sc.status = 'completed'
+                  AND YEAR(sc.date_) = YEAR(NOW())
+                ORDER BY sc.date_ ASC
+                """,
+                (id_folder,),
+            )
+        else:
+            # Valeur par défaut si la période n'est pas reconnue
+            cur.execute(
+                """
+                SELECT
+                    sc.date_,
+                    sz.size_kb
+                FROM sizes sz
+                JOIN scans sc ON sz.id_scan = sc.id_scan
+                WHERE sz.id_folder = %s
+                  AND sc.status = 'completed'
+                  AND sc.date_ >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                ORDER BY sc.date_ ASC
+                """,
+                (id_folder,),
+            )
         historique_raw = cur.fetchall()
 
         labels = []
