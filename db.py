@@ -222,25 +222,27 @@ def detecter_dossiers_supprimes(
     try:
         curseur = connexion_mysql.cursor()
 
-        # Récupérer tous les dossiers NON supprimés en base pour cette racine
+        # Itère sur les dossiers en base sans tout charger en mémoire
+        # Compare chaque chemin avec le set de chemins disque (déjà en mémoire)
         curseur.execute(
             "SELECT id_folder, path FROM folders "
             "WHERE is_deleted = 0 AND (path = %s OR LEFT(path, %s) = %s)",
             (chemin_racine_norm, len(prefix), prefix),
         )
-        dossiers_en_base = {row[1]: row[0] for row in curseur.fetchall()}
 
-        # Comparaison instantanée via set difference
-        chemins_base = set(dossiers_en_base.keys())
-        supprimes_chemins = chemins_base - chemins_disque
+        supprimes_ids = []
+        supprimes_tuples = []
+        for id_dossier, chemin in curseur:
+            if chemin not in chemins_disque:
+                supprimes_ids.append(id_dossier)
+                supprimes_tuples.append((id_dossier, chemin))
 
-        if not supprimes_chemins:
+        if not supprimes_tuples:
             curseur.close()
             return []
 
         # Récupérer les dernières tailles connues pour les dossiers supprimés
-        ids_supprimes = [dossiers_en_base[c] for c in supprimes_chemins]
-        placeholders = ",".join(["%s"] * len(ids_supprimes))
+        placeholders = ",".join(["%s"] * len(supprimes_ids))
         curseur.execute(
             f"SELECT s.id_folder, s.size_kb FROM sizes s "
             f"INNER JOIN ("
@@ -248,14 +250,13 @@ def detecter_dossiers_supprimes(
             f"  FROM sizes WHERE id_folder IN ({placeholders}) "
             f"  GROUP BY id_folder"
             f") latest ON s.id_folder = latest.id_folder AND s.id_scan = latest.max_scan",
-            ids_supprimes,
+            supprimes_ids,
         )
         dernieres_tailles = {row[0]: row[1] for row in curseur.fetchall()}
 
         dossiers_supprimes = []
         compteur = 0
-        for chemin in supprimes_chemins:
-            id_dossier = dossiers_en_base[chemin]
+        for id_dossier, chemin in supprimes_tuples:
             derniere_taille_kb = dernieres_tailles.get(id_dossier, 0)
 
             # Marquer comme supprimé
