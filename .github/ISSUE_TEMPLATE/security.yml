@@ -1,0 +1,72 @@
+name: "🔒 Security Vulnerability"
+description: Report a security issue (this will be kept private)
+title: "[Security]: "
+labels: ["security"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > **Important:** This issue will be automatically hidden from public view.
+        > If this is a critical vulnerability, consider also emailing the maintainer directly.
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: "🚨 Severity"
+      options:
+        - Low — minimal impact
+        - Medium — limited exposure or requires specific conditions
+        - High — significant impact, affects multiple users
+        - Critical — active exploitation or data breach risk
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "📝 Vulnerability Description"
+      description: Describe the security issue clearly. Do not include proof-of-concept exploits that could be weaponized.
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: "💥 Impact"
+      description: What is the potential impact? (data exposure, unauthorized access, etc.)
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: "👣 Steps to Reproduce"
+      description: How can this vulnerability be reproduced? (Keep it high-level for sensitive issues)
+      placeholder: |
+        1. Navigate to '...'
+        2. Submit '...'
+        3. Observe '...'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: "🎯 Affected Area"
+      options:
+        - Authentication / Login
+        - API endpoints
+        - Database / Data exposure
+        - Dependencies (supply chain)
+        - Configuration / Deployment
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: mitigation
+    attributes:
+      label: "💡 Suggested Fix (optional)"
+      description: If you know how to fix this, describe the solution.
+    validations:
+      required: false
