@@ -3,8 +3,7 @@
 /build
 /dist
 SuperviseurDossiers.spec
-/__pycache__
-/tests/__pycache__
+**/__pycache__/
 superviseur.log
 
 # Custom plugins (not versioned)
