@@ -158,10 +158,9 @@ def reset_statut_nouveaux_dossiers_racines(
                 if not prefix.endswith(os.sep):
                     prefix += os.sep
 
-                clauses.append("path = %s OR LEFT(path, %s) = %s")
+                clauses.append("path = %s OR path LIKE %s")
                 params.append(racine_norm)
-                params.append(len(prefix))
-                params.append(prefix)
+                params.append(prefix + "%")
 
         if clauses:
             query = f"UPDATE folders SET is_new = 0 WHERE is_new = 1 AND ({' OR '.join(clauses)})"
@@ -225,8 +224,8 @@ def detecter_dossiers_supprimes(
         # Compare chaque chemin avec le set de chemins disque (déjà en mémoire)
         curseur.execute(
             "SELECT id_folder, path FROM folders "
-            "WHERE is_deleted = 0 AND (path = %s OR LEFT(path, %s) = %s)",
-            (chemin_racine_norm, len(prefix), prefix),
+            "WHERE is_deleted = 0 AND (path = %s OR path LIKE %s)",
+            (chemin_racine_norm, prefix + "%"),
         )
 
         supprimes_ids = []
@@ -370,6 +369,7 @@ def traiter_dossiers_en_lot(
     taille_totale_scan = 0
     changement_racine = 0
     compteur = 0
+    ids_a_resurrecter = []  # IDs à réactiver (batch UPDATE)
 
     for chemin, taille_octets in dossiers_avec_tailles.items():
         taille_en_ko = round(taille_octets / 1024)
@@ -380,11 +380,8 @@ def traiter_dossiers_en_lot(
             # Dossier existant → récupérer l'id et la taille précédente
             id_dossier = dossiers_existants[chemin]
 
-            # Résurrection : si le dossier était marqué supprimé, le réactiver
-            curseur.execute(
-                "UPDATE folders SET is_deleted = 0 WHERE id_folder = %s AND is_deleted = 1",
-                (id_dossier,),
-            )
+            # Collecter l'ID pour résurrection batchée
+            ids_a_resurrecter.append(id_dossier)
 
             taille_precedente = tailles_precedentes.get(id_dossier, 0)
             diff_ko = taille_en_ko - int(taille_precedente)
@@ -441,6 +438,13 @@ def traiter_dossiers_en_lot(
         if compteur % 5000 == 0:
             connexion_mysql.commit()
 
+    # Résurrection batchée : réactiver les dossiers supprimés en une seule requête
+    if ids_a_resurrecter:
+        placeholders = ','.join(['%s'] * len(ids_a_resurrecter))
+        curseur.execute(
+            f'UPDATE folders SET is_deleted = 0 WHERE id_folder IN ({placeholders}) AND is_deleted = 1',
+            ids_a_resurrecter,
+        )
     connexion_mysql.commit()
     curseur.close()
     return nouveaux_dossiers, dossiers_modifies, taille_totale_scan, changement_racine
