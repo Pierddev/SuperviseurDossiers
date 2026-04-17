@@ -6,6 +6,7 @@ Fournit un dashboard, l'historique des dossiers et la configuration.
 import os
 import dotenv
 
+from version import __version__
 from flask import Flask, redirect, render_template, request, url_for, flash
 from flask_login import (
     LoginManager,
@@ -43,7 +44,7 @@ def creer_app() -> Flask:
     )
 
     # Injection globale de la version
-    app.jinja_env.globals["DS_VERSION"] = os.getenv("DS_VERSION", "0.0.0")
+    app.jinja_env.globals["DS_VERSION"] = __version__
 
     app.config["SECRET_KEY"] = os.getenv("INTRA_SECRET_KEY", "change-me-in-production")
     app.config["TEMPLATES_AUTO_RELOAD"] = True
