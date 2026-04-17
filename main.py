@@ -14,6 +14,8 @@ from datetime import datetime
 import dotenv
 import schedule
 
+from version import __version__
+
 # Détermine le dossier où se trouve l'exécutable (ou le script)
 if getattr(sys, "frozen", False):
     DOSSIER_APP = os.path.dirname(sys.executable)
@@ -144,7 +146,7 @@ if __name__ == "__main__":
 
         delai_verification = int(os.getenv("DELAI_VERIFICATION", 300))
 
-        print("🚀 Superviseur de Dossiers - Démarré")
+        print(f"🚀 Superviseur de Dossiers v{__version__} - Démarré")
         print(f"📅 Prochain scan prévu à : {heure_scan}")
         print(f"⏱️ Vérification toutes les : {delai_verification} secondes")
 
