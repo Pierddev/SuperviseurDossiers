@@ -90,6 +90,20 @@ def _charger_module(nom_module: str, chemin_fichier: str) -> dict:
         }
 
 
+def reinitialiser_plugins_en_erreur() -> None:
+    """
+    Retire du registre les plugins en état d'erreur pour permettre un nouveau
+    chargement lors du prochain appel de charger_plugins().
+    Ne touche pas aux plugins actifs ni à ceux désactivés manuellement (sans erreur).
+    """
+    global _REGISTRE
+    for nom in list(_REGISTRE.keys()):
+        info = _REGISTRE[nom]
+        if not info["actif"] and info.get("erreur"):
+            del _REGISTRE[nom]
+            logger.info(f"Plugin '{nom}' retiré du registre (en erreur) pour retry.")
+
+
 def charger_plugins(dossier_app: str) -> list:
     """
     Scanne le dossier 'plugins/' et charge les modules Python qui y sont présents.
@@ -111,8 +125,16 @@ def charger_plugins(dossier_app: str) -> list:
         sys.path.insert(0, dossier)
 
     for nom_module, chemin in _scan_fichiers_plugins():
-        # Ne recharge pas un plugin déjà en registre (sauf rechargement forcé)
-        if nom_module not in _REGISTRE:
+        deja_present = nom_module in _REGISTRE
+        en_erreur = (
+            deja_present
+            and not _REGISTRE[nom_module]["actif"]
+            and _REGISTRE[nom_module].get("erreur")
+        )
+
+        if not deja_present or en_erreur:
+            if en_erreur and nom_module in sys.modules:
+                del sys.modules[nom_module]
             etat = _charger_module(nom_module, chemin)
             _REGISTRE[nom_module] = etat
 
