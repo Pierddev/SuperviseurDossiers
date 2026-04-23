@@ -1,0 +1,673 @@
+2026-04-23 21:14:55,630 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:15:47,869 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:16:46,846 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:17:08,469 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:17:33,211 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:18:44,988 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:23:12,373 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:24:59,392 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:25:04,700 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:25:38,184 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:25:49,121 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:25:49,126 - INFO - Start watching changes
+2026-04-23 21:25:49,126 - INFO - Start detecting changes
+2026-04-23 21:25:51,003 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:25:53,349 - ERROR - Uncaught exception GET / (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5000', method='GET', uri='/', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 1857, in _execute
+    result = self.prepare()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 3259, in prepare
+    self.fallback(self.request)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\livereload\server.py", line 128, in __call__
+    app_response = self.wsgi_app(
+        WSGIContainer(self.wsgi_app).environ(request), start_response)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\app.py", line 128, in dashboard
+    stats = get_stats_dashboard()
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\queries.py", line 264, in get_stats_dashboard
+    total_dossiers = res_total_folders["total"]
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+2026-04-23 21:25:53,354 - ERROR - 500 GET / (127.0.0.1) 120.24ms
+2026-04-23 21:25:54,160 - ERROR - Uncaught exception GET / (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5000', method='GET', uri='/', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 1857, in _execute
+    result = self.prepare()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 3259, in prepare
+    self.fallback(self.request)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\livereload\server.py", line 128, in __call__
+    app_response = self.wsgi_app(
+        WSGIContainer(self.wsgi_app).environ(request), start_response)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\app.py", line 128, in dashboard
+    stats = get_stats_dashboard()
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\queries.py", line 264, in get_stats_dashboard
+    total_dossiers = res_total_folders["total"]
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+2026-04-23 21:25:54,163 - ERROR - 500 GET / (127.0.0.1) 13.13ms
+2026-04-23 21:25:54,619 - ERROR - Uncaught exception GET / (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5000', method='GET', uri='/', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 1857, in _execute
+    result = self.prepare()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 3259, in prepare
+    self.fallback(self.request)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\livereload\server.py", line 128, in __call__
+    app_response = self.wsgi_app(
+        WSGIContainer(self.wsgi_app).environ(request), start_response)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\app.py", line 128, in dashboard
+    stats = get_stats_dashboard()
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\queries.py", line 264, in get_stats_dashboard
+    total_dossiers = res_total_folders["total"]
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+2026-04-23 21:25:54,622 - ERROR - 500 GET / (127.0.0.1) 12.00ms
+2026-04-23 21:25:55,164 - ERROR - Uncaught exception GET / (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5000', method='GET', uri='/', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 1857, in _execute
+    result = self.prepare()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 3259, in prepare
+    self.fallback(self.request)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\livereload\server.py", line 128, in __call__
+    app_response = self.wsgi_app(
+        WSGIContainer(self.wsgi_app).environ(request), start_response)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\app.py", line 128, in dashboard
+    stats = get_stats_dashboard()
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\queries.py", line 264, in get_stats_dashboard
+    total_dossiers = res_total_folders["total"]
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+2026-04-23 21:25:55,166 - ERROR - 500 GET / (127.0.0.1) 11.79ms
+2026-04-23 21:25:56,319 - ERROR - Uncaught exception GET / (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5000', method='GET', uri='/', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 1857, in _execute
+    result = self.prepare()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 3259, in prepare
+    self.fallback(self.request)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\livereload\server.py", line 128, in __call__
+    app_response = self.wsgi_app(
+        WSGIContainer(self.wsgi_app).environ(request), start_response)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\app.py", line 128, in dashboard
+    stats = get_stats_dashboard()
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\queries.py", line 264, in get_stats_dashboard
+    total_dossiers = res_total_folders["total"]
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+2026-04-23 21:25:56,321 - ERROR - 500 GET / (127.0.0.1) 12.94ms
+2026-04-23 21:25:56,661 - ERROR - Uncaught exception GET / (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5000', method='GET', uri='/', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 1857, in _execute
+    result = self.prepare()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 3259, in prepare
+    self.fallback(self.request)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\livereload\server.py", line 128, in __call__
+    app_response = self.wsgi_app(
+        WSGIContainer(self.wsgi_app).environ(request), start_response)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\app.py", line 128, in dashboard
+    stats = get_stats_dashboard()
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\queries.py", line 264, in get_stats_dashboard
+    total_dossiers = res_total_folders["total"]
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+2026-04-23 21:25:56,663 - ERROR - 500 GET / (127.0.0.1) 12.78ms
+2026-04-23 21:25:58,401 - ERROR - Uncaught exception GET / (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5000', method='GET', uri='/', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 1857, in _execute
+    result = self.prepare()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 3259, in prepare
+    self.fallback(self.request)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\livereload\server.py", line 128, in __call__
+    app_response = self.wsgi_app(
+        WSGIContainer(self.wsgi_app).environ(request), start_response)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\app.py", line 128, in dashboard
+    stats = get_stats_dashboard()
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\queries.py", line 264, in get_stats_dashboard
+    total_dossiers = res_total_folders["total"]
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+2026-04-23 21:25:58,404 - ERROR - 500 GET / (127.0.0.1) 13.00ms
+2026-04-23 21:25:58,808 - ERROR - Uncaught exception GET / (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5000', method='GET', uri='/', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 1857, in _execute
+    result = self.prepare()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 3259, in prepare
+    self.fallback(self.request)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\livereload\server.py", line 128, in __call__
+    app_response = self.wsgi_app(
+        WSGIContainer(self.wsgi_app).environ(request), start_response)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\app.py", line 128, in dashboard
+    stats = get_stats_dashboard()
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\queries.py", line 264, in get_stats_dashboard
+    total_dossiers = res_total_folders["total"]
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+2026-04-23 21:25:58,811 - ERROR - 500 GET / (127.0.0.1) 14.14ms
+2026-04-23 21:25:59,115 - ERROR - Uncaught exception GET / (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5000', method='GET', uri='/', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 1857, in _execute
+    result = self.prepare()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 3259, in prepare
+    self.fallback(self.request)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\livereload\server.py", line 128, in __call__
+    app_response = self.wsgi_app(
+        WSGIContainer(self.wsgi_app).environ(request), start_response)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\app.py", line 128, in dashboard
+    stats = get_stats_dashboard()
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\queries.py", line 264, in get_stats_dashboard
+    total_dossiers = res_total_folders["total"]
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+2026-04-23 21:25:59,117 - ERROR - 500 GET / (127.0.0.1) 12.68ms
+2026-04-23 21:25:59,437 - ERROR - Uncaught exception GET / (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5000', method='GET', uri='/', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 1857, in _execute
+    result = self.prepare()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 3259, in prepare
+    self.fallback(self.request)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\livereload\server.py", line 128, in __call__
+    app_response = self.wsgi_app(
+        WSGIContainer(self.wsgi_app).environ(request), start_response)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\app.py", line 128, in dashboard
+    stats = get_stats_dashboard()
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\queries.py", line 264, in get_stats_dashboard
+    total_dossiers = res_total_folders["total"]
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+2026-04-23 21:25:59,441 - ERROR - 500 GET / (127.0.0.1) 14.17ms
+2026-04-23 21:25:59,790 - ERROR - Uncaught exception GET / (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5000', method='GET', uri='/', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 1857, in _execute
+    result = self.prepare()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 3259, in prepare
+    self.fallback(self.request)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\livereload\server.py", line 128, in __call__
+    app_response = self.wsgi_app(
+        WSGIContainer(self.wsgi_app).environ(request), start_response)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\app.py", line 128, in dashboard
+    stats = get_stats_dashboard()
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\queries.py", line 264, in get_stats_dashboard
+    total_dossiers = res_total_folders["total"]
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+2026-04-23 21:25:59,794 - ERROR - 500 GET / (127.0.0.1) 12.75ms
+2026-04-23 21:26:00,166 - ERROR - Uncaught exception GET / (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5000', method='GET', uri='/', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 1857, in _execute
+    result = self.prepare()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 3259, in prepare
+    self.fallback(self.request)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\livereload\server.py", line 128, in __call__
+    app_response = self.wsgi_app(
+        WSGIContainer(self.wsgi_app).environ(request), start_response)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\app.py", line 128, in dashboard
+    stats = get_stats_dashboard()
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\queries.py", line 264, in get_stats_dashboard
+    total_dossiers = res_total_folders["total"]
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+2026-04-23 21:26:00,175 - ERROR - 500 GET / (127.0.0.1) 18.18ms
+2026-04-23 21:26:43,922 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:26:43,927 - INFO - Start watching changes
+2026-04-23 21:26:43,927 - INFO - Start detecting changes
+2026-04-23 21:26:46,764 - ERROR - Uncaught exception GET / (127.0.0.1)
+HTTPServerRequest(protocol='http', host='127.0.0.1:5000', method='GET', uri='/', version='HTTP/1.1', remote_ip='127.0.0.1')
+Traceback (most recent call last):
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 1857, in _execute
+    result = self.prepare()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\tornado\web.py", line 3259, in prepare
+    self.fallback(self.request)
+    ~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\livereload\server.py", line 128, in __call__
+    app_response = self.wsgi_app(
+        WSGIContainer(self.wsgi_app).environ(request), start_response)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1514, in wsgi_app
+    response = self.handle_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask\app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\.venv\Lib\site-packages\flask_login\utils.py", line 290, in decorated_view
+    return current_app.ensure_sync(func)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\app.py", line 128, in dashboard
+    stats = get_stats_dashboard()
+  File "D:\Formation\Dev\SuperviseurDossiers\intranet\queries.py", line 264, in get_stats_dashboard
+    total_dossiers = res_total_folders["total"]
+                     ~~~~~~~~~~~~~~~~~^^^^^^^^^
+TypeError: 'NoneType' object is not subscriptable
+2026-04-23 21:26:46,769 - ERROR - 500 GET / (127.0.0.1) 68.25ms
+2026-04-23 21:27:16,478 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:27:16,483 - INFO - Start watching changes
+2026-04-23 21:27:16,483 - INFO - Start detecting changes
+2026-04-23 21:27:44,143 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:27:51,856 - INFO - Browser Connected: http://127.0.0.1:5000/login?next=%2F
+2026-04-23 21:28:00,791 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:29:03,654 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:29:03,659 - INFO - Start watching changes
+2026-04-23 21:29:03,659 - INFO - Start detecting changes
+2026-04-23 21:29:04,273 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:29:05,263 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:29:06,489 - INFO - Reload 1 waiters: None
+2026-04-23 21:29:06,783 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:29:12,177 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:29:12,181 - INFO - Start watching changes
+2026-04-23 21:29:12,181 - INFO - Start detecting changes
+2026-04-23 21:29:12,278 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:29:13,794 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:29:14,519 - INFO - Browser Connected: http://127.0.0.1:5000/plugins
+2026-04-23 21:29:14,984 - INFO - Reload 1 waiters: None
+2026-04-23 21:29:15,080 - INFO - Browser Connected: http://127.0.0.1:5000/plugins
+2026-04-23 21:29:16,743 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:29:17,669 - INFO - Browser Connected: http://127.0.0.1:5000/history
+2026-04-23 21:29:25,098 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:30:40,280 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:30:49,197 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:30:49,202 - INFO - Start watching changes
+2026-04-23 21:30:49,202 - INFO - Start detecting changes
+2026-04-23 21:30:50,262 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:30:50,813 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:30:58,205 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:30:58,209 - INFO - Start watching changes
+2026-04-23 21:30:58,209 - INFO - Start detecting changes
+2026-04-23 21:30:59,265 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:30:59,812 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:31:08,294 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:31:08,297 - INFO - Start watching changes
+2026-04-23 21:31:08,297 - INFO - Start detecting changes
+2026-04-23 21:31:09,277 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:31:09,909 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:31:22,324 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:31:22,328 - INFO - Start watching changes
+2026-04-23 21:31:22,329 - INFO - Start detecting changes
+2026-04-23 21:31:23,278 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:31:23,932 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:31:45,818 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:31:45,822 - INFO - Start watching changes
+2026-04-23 21:31:45,822 - INFO - Start detecting changes
+2026-04-23 21:31:47,263 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:31:47,430 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:32:00,831 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:32:00,835 - INFO - Start watching changes
+2026-04-23 21:32:00,835 - INFO - Start detecting changes
+2026-04-23 21:32:02,267 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:32:02,438 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:32:26,841 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:32:26,845 - INFO - Start watching changes
+2026-04-23 21:32:26,845 - INFO - Start detecting changes
+2026-04-23 21:32:28,270 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:32:28,458 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:32:37,316 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:32:37,320 - INFO - Start watching changes
+2026-04-23 21:32:37,320 - INFO - Start detecting changes
+2026-04-23 21:32:38,265 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:32:38,930 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:32:45,822 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:32:45,827 - INFO - Start watching changes
+2026-04-23 21:32:45,827 - INFO - Start detecting changes
+2026-04-23 21:32:47,268 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:32:47,434 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:32:58,373 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:32:58,378 - INFO - Start watching changes
+2026-04-23 21:32:58,379 - INFO - Start detecting changes
+2026-04-23 21:32:59,263 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:32:59,984 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:33:12,882 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:33:12,886 - INFO - Start watching changes
+2026-04-23 21:33:12,886 - INFO - Start detecting changes
+2026-04-23 21:33:14,263 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:33:14,492 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:33:24,387 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:33:24,391 - INFO - Start watching changes
+2026-04-23 21:33:24,391 - INFO - Start detecting changes
+2026-04-23 21:33:25,271 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:33:26,001 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:33:30,947 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:33:36,900 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:33:36,904 - INFO - Start watching changes
+2026-04-23 21:33:36,904 - INFO - Start detecting changes
+2026-04-23 21:33:38,267 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:33:38,517 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:33:41,536 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:34:03,740 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:34:22,970 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:34:22,974 - INFO - Start watching changes
+2026-04-23 21:34:22,974 - INFO - Start detecting changes
+2026-04-23 21:34:24,261 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:34:24,581 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:35:33,982 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:35:34,002 - INFO - Start watching changes
+2026-04-23 21:35:34,002 - INFO - Start detecting changes
+2026-04-23 21:35:35,261 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:35:35,615 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:35:55,039 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:35:55,043 - INFO - Start watching changes
+2026-04-23 21:35:55,043 - INFO - Start detecting changes
+2026-04-23 21:35:56,259 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:35:56,651 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:36:39,035 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:36:39,039 - INFO - Start watching changes
+2026-04-23 21:36:39,039 - INFO - Start detecting changes
+2026-04-23 21:36:40,264 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:36:40,647 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:36:58,051 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:36:58,056 - INFO - Start watching changes
+2026-04-23 21:36:58,056 - INFO - Start detecting changes
+2026-04-23 21:36:59,269 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:36:59,661 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:37:38,628 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:37:38,632 - INFO - Start watching changes
+2026-04-23 21:37:38,632 - INFO - Start detecting changes
+2026-04-23 21:37:39,266 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:37:40,615 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:37:40,620 - INFO - Start watching changes
+2026-04-23 21:37:40,620 - INFO - Start detecting changes
+2026-04-23 21:37:41,268 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:37:42,236 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:37:43,425 - INFO - Reload 1 waiters: None
+2026-04-23 21:37:43,782 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:38:33,148 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:38:33,152 - INFO - Start watching changes
+2026-04-23 21:38:33,152 - INFO - Start detecting changes
+2026-04-23 21:38:34,261 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:38:34,760 - INFO - Ignore: D:\Formation\Dev\SuperviseurDossiers\intranet\static\js\settings.js
+2026-04-23 21:39:36,960 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:40:15,624 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:44:33,193 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:44:36,694 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:44:37,671 - INFO - Browser Connected: http://127.0.0.1:5000/history
+2026-04-23 21:44:38,481 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:44:39,646 - INFO - Browser Connected: http://127.0.0.1:5000/history
+2026-04-23 21:44:43,220 - INFO - Browser Connected: http://127.0.0.1:5000/settings
+2026-04-23 21:44:58,047 - INFO - Browser Connected: http://127.0.0.1:5000/settings
+2026-04-23 21:45:05,920 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 21:45:05,923 - INFO - Start watching changes
+2026-04-23 21:45:05,924 - INFO - Start detecting changes
+2026-04-23 21:45:08,271 - INFO - Browser Connected: http://127.0.0.1:5000/settings
+2026-04-23 21:45:11,452 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:45:12,951 - INFO - Browser Connected: http://127.0.0.1:5000/settings
+2026-04-23 21:47:17,886 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:47:20,213 - INFO - Browser Connected: http://127.0.0.1:5000/plugins
+2026-04-23 21:47:21,005 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:47:22,660 - INFO - Browser Connected: http://127.0.0.1:5000/plugins
+2026-04-23 21:47:24,367 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:47:28,743 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:49:57,771 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:49:58,827 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:49:59,966 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:50:00,776 - INFO - Browser Connected: http://127.0.0.1:5000/history
+2026-04-23 21:50:01,190 - INFO - Browser Connected: http://127.0.0.1:5000/history
+2026-04-23 21:50:01,799 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:50:06,180 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:50:06,828 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:50:07,304 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:50:07,649 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:50:07,888 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:50:08,144 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:50:13,959 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:50:14,225 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:50:58,244 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:50:58,820 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:52:07,349 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:52:37,662 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:52:39,386 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:52:39,799 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:52:40,142 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:53:28,018 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:53:28,812 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:53:34,115 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:53:35,008 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:53:36,113 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:53:36,551 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:53:36,960 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:53:37,490 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:53:45,920 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:53:46,340 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:54:31,064 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:54:31,625 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:54:32,056 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:54:34,309 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:54:34,997 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:54:35,485 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:54:36,006 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:54:36,343 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:54:36,552 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:54:36,737 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:16,509 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:17,619 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:18,805 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:19,202 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:19,470 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:19,641 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:19,866 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:20,073 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:23,789 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:24,425 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:24,899 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:26,311 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:27,884 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:28,284 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:29,721 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:30,157 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:30,518 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:30,741 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:30,977 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:42,746 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:43,247 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:44,861 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 21:56:49,943 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:56:52,175 - INFO - Browser Connected: http://127.0.0.1:5000/history?id=232635&path=C:%5C
+2026-04-23 21:57:03,455 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 21:57:05,422 - INFO - Browser Connected: http://127.0.0.1:5000/history?id=3870&path=D:%5CFormation
+2026-04-23 21:58:13,680 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:58:22,717 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:58:46,835 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 21:59:26,395 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 22:12:12,157 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 22:12:24,647 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 22:27:07,881 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 22:28:14,474 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 22:29:51,155 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-23 22:30:42,840 - INFO - Serving on http://0.0.0.0:5000
+2026-04-23 22:30:42,844 - INFO - Start watching changes
+2026-04-23 22:30:42,844 - INFO - Start detecting changes
+2026-04-23 22:30:45,206 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-23 22:30:46,203 - INFO - Browser Connected: http://127.0.0.1:5000/history
+2026-04-23 22:30:47,176 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 22:30:47,623 - INFO - Browser Connected: http://127.0.0.1:5000/plugins
+2026-04-23 22:30:49,833 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-23 22:30:50,212 - INFO - Browser Connected: http://127.0.0.1:5000/plugins

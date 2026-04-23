@@ -6,14 +6,15 @@ Séparées de db.py pour ne pas alourdir le cœur du scanner.
 import os
 
 import mysql.connector
+from typing import cast, Any
 
 
 def get_connexion() -> mysql.connector.MySQLConnection | None:
     """Ouvre une connexion à la BDD MariaDB."""
     try:
-        return mysql.connector.connect(
+        return mysql.connector.connect(  # type: ignore[return-value]
             host=os.getenv("DB_HOST"),
-            port=int(os.getenv("DB_PORT", 3306)),
+            port=int(os.getenv("DB_PORT", "3306")),
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASSWORD"),
             database=os.getenv("DB_NAME"),
@@ -34,7 +35,7 @@ def get_derniers_scans(limit: int = 10) -> list[dict]:
             "ORDER BY date_ DESC LIMIT %s",
             (limit,),
         )
-        return cur.fetchall()
+        return cast(list[dict[str, Any]], cur.fetchall())
     except mysql.connector.Error:
         return []
     finally:
@@ -65,7 +66,7 @@ def get_scans_history(limit: int = 50) -> list[dict]:
             """,
             (limit,),
         )
-        return cur.fetchall()
+        return cast(list[dict[str, Any]], cur.fetchall())
     except mysql.connector.Error:
         return []
     finally:
@@ -94,7 +95,7 @@ def get_scan_details(id_scan: int) -> dict:
             """,
             (id_scan,),
         )
-        scan = cur.fetchone()
+        scan = cast(dict[str, Any] | None, cur.fetchone())
         if not scan:
             return {}
 
@@ -111,7 +112,7 @@ def get_scan_details(id_scan: int) -> dict:
             """,
             (id_scan,),
         )
-        row_prev = cur.fetchone()
+        row_prev = cast(dict[str, Any] | None, cur.fetchone())
         id_scan_prev = row_prev["id_scan"] if row_prev else None
 
         variation_kb = None
@@ -120,7 +121,7 @@ def get_scan_details(id_scan: int) -> dict:
                 "SELECT total_size_kb FROM scans WHERE id_scan = %s",
                 (id_scan_prev,),
             )
-            prev_row = cur.fetchone()
+            prev_row = cast(dict[str, Any] | None, cur.fetchone())
             prev_kb = (prev_row["total_size_kb"] if prev_row else 0) or 0
             variation_kb = total_kb - prev_kb
 
@@ -151,7 +152,7 @@ def get_scan_details(id_scan: int) -> dict:
                 "chemin": r["path"],
                 "taille_kb": r["size_kb"],
             }
-            for r in cur.fetchall()
+            for r in cast(list[dict[str, Any]], cur.fetchall())
         ]
 
         # 5. Dossiers modifiés (variation > SEUIL_DEFAUT) par rapport au scan précédent
@@ -182,7 +183,7 @@ def get_scan_details(id_scan: int) -> dict:
                     "diff_kb": r["diff_kb"],
                     "taille_kb": r["size_kb_cur"],
                 }
-                for r in cur.fetchall()
+                for r in cast(list[dict[str, Any]], cur.fetchall())
             ]
 
         # 6. Dossiers supprimés (size_kb = 0 pour ce scan, avec une taille précédente > 0)
@@ -212,7 +213,7 @@ def get_scan_details(id_scan: int) -> dict:
                     "chemin": r["path"],
                     "taille_kb": r["size_kb_prev"],
                 }
-                for r in cur.fetchall()
+                for r in cast(list[dict[str, Any]], cur.fetchall())
             ]
 
         # Convertit la date pour la sérialisation JSON
@@ -260,11 +261,11 @@ def get_stats_dashboard() -> dict:
 
         # --- Nombre total de dossiers ---
         cur.execute("SELECT COUNT(*) as total FROM folders")
-        total_dossiers = cur.fetchone()["total"]
+        total_dossiers = cast(dict[str, Any], cur.fetchone())["total"]
 
         # --- Nombre total de scans ---
         cur.execute("SELECT COUNT(*) as total FROM scans WHERE status = 'completed'")
-        total_scans = cur.fetchone()["total"]
+        total_scans = cast(dict[str, Any], cur.fetchone())["total"]
 
         # --- Top 5 changements ---
         top_changements = []
@@ -274,7 +275,7 @@ def get_stats_dashboard() -> dict:
                 "SELECT id_scan FROM scans WHERE status = 'completed' "
                 "ORDER BY date_ DESC LIMIT 2"
             )
-            deux_derniers = cur.fetchall()
+            deux_derniers = cast(list[dict[str, Any]], cur.fetchall())
             id_scan_actuel = deux_derniers[0]["id_scan"]
             id_scan_precedent = deux_derniers[1]["id_scan"]
 
@@ -294,7 +295,7 @@ def get_stats_dashboard() -> dict:
                 """,
                 (id_scan_actuel, id_scan_precedent),
             )
-            top_changements = cur.fetchall()
+            top_changements = cast(list[dict[str, Any]], cur.fetchall())
 
         return {
             "dernier_scan": dernier_scan,
@@ -314,7 +315,7 @@ def _get_id_dernier_scan(cur) -> int | None:
     cur.execute(
         "SELECT id_scan FROM scans WHERE status = 'completed' ORDER BY date_ DESC LIMIT 1"
     )
-    row = cur.fetchone()
+    row = cast(dict[str, Any] | None, cur.fetchone())
     return row["id_scan"] if row else None
 
 
@@ -376,7 +377,7 @@ def get_dossiers_racines() -> list[dict]:
             ORDER BY f.path
             """
         )
-        rows = cur.fetchall()
+        rows = cast(list[dict[str, Any]], cur.fetchall())
         result = _enrichir_avec_taille(cur, rows, None)
         
         for r in result:
@@ -430,7 +431,7 @@ def get_enfants_dossier(parent_path: str) -> list[dict]:
             """,
             (len(prefix), prefix, sep, sep_count_children, original_parent_path),
         )
-        rows = cur.fetchall()
+        rows = cast(list[dict[str, Any]], cur.fetchall())
         return _enrichir_avec_taille(cur, rows, None)
     except mysql.connector.Error:
         return []
@@ -455,7 +456,7 @@ def get_historique_dossier(id_folder: int, periode: str = "30") -> dict:
             "SELECT id_folder, path, is_new FROM folders WHERE id_folder = %s",
             (id_folder,),
         )
-        dossier = cur.fetchone()
+        dossier = cast(dict[str, Any] | None, cur.fetchone())
         if not dossier:
             return {}
 
@@ -509,7 +510,7 @@ def get_historique_dossier(id_folder: int, periode: str = "30") -> dict:
                 """,
                 (id_folder,),
             )
-        historique_raw = cur.fetchall()
+        historique_raw = cast(list[dict[str, Any]], cur.fetchall())
 
         labels = []
         data = []
@@ -584,7 +585,7 @@ def rechercher_dossiers(query: str, limit: int = 30) -> list[dict]:
             """,
             (search_term, limit),
         )
-        rows = cur.fetchall()
+        rows = cast(list[dict[str, Any]], cur.fetchall())
         return [
             {
                 "id_folder": row["id_folder"],

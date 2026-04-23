@@ -16,6 +16,16 @@ import schedule
 
 from version import __version__
 
+# Imports des modules locaux
+from db import (
+    connecter_base_de_donnees,
+    deconnecter_base_de_donnees,
+    parser_seuils_personnalises,
+)
+from notifications import envoyer_notif_teams
+from scanner import scanner
+from plugin_loader import charger_plugins, get_registre
+
 # Détermine le dossier où se trouve l'exécutable (ou le script)
 if getattr(sys, "frozen", False):
     DOSSIER_APP = os.path.dirname(sys.executable)
@@ -38,15 +48,6 @@ logging.getLogger("flask").setLevel(logging.ERROR)
 logging.getLogger("livereload").setLevel(logging.ERROR)
 logging.getLogger("urllib3").setLevel(logging.ERROR)
 logging.getLogger("mysql.connector").setLevel(logging.ERROR)
-
-from db import (
-    connecter_base_de_donnees,
-    deconnecter_base_de_donnees,
-    parser_seuils_personnalises,
-)
-from notifications import envoyer_notif_teams
-from scanner import scanner
-from plugin_loader import charger_plugins, get_registre
 
 
 def verifier_chemins_manquants(chemins_manquants: list[str]) -> None:
@@ -197,7 +198,9 @@ if __name__ == "__main__":
                 time.sleep(DELAI_RETRY)
                 plugins = charger_plugins(DOSSIER_APP)
                 if len(plugins) == plugins_attendus:
-                    print(f"✅ Tous les plugins chargés lors de la tentative {tentative}.")
+                    print(
+                        f"✅ Tous les plugins chargés lors de la tentative {tentative}."
+                    )
                     break
 
         if plugins:
@@ -222,7 +225,7 @@ if __name__ == "__main__":
 
                 # Gestion du mode Debug / Hot-Reload
                 debug_mode = os.getenv("FLASK_DEBUG", "0") == "1"
-                
+
                 # Désactive le debug_mode (et donc livereload) si on est dans un EXE (Frozen)
                 if getattr(sys, "frozen", False):
                     debug_mode = False
@@ -230,27 +233,31 @@ if __name__ == "__main__":
                 if debug_mode:
                     # En mode debug, on utilise livereload pour rafraîchir le navigateur automatiquement
                     # lors des modifications de CSS (style inline dans les templates) ou de fichiers statiques.
-                    from livereload import Server
-                    
+                    from livereload import Server  # type: ignore[import-untyped]
+
                     # On lance l'ordonnanceur dans un thread séparé (uniquement dans le processus principal de livereload)
                     def lancer_ordonnanceur():
                         print("⏱️  Ordonnanceur de scan démarré en arrière-plan")
                         while True:
                             schedule.run_pending()
                             time.sleep(delai_verification)
-                            
-                    thread_scan = threading.Thread(target=lancer_ordonnanceur, daemon=True)
+
+                    thread_scan = threading.Thread(
+                        target=lancer_ordonnanceur, daemon=True
+                    )
                     thread_scan.start()
 
                     server = Server(app.wsgi_app)
-                    
+
                     # Surveiller les templates et les fichiers statiques
                     server.watch(os.path.join(DOSSIER_APP, "intranet", "templates"))
                     server.watch(os.path.join(DOSSIER_APP, "intranet", "static"))
-                    
+
                     statut_intranet = f"✅ Actif (LIVE RELOAD) sur le port {intra_port}"
-                    print(f"🌐 Intranet démarré sur http://0.0.0.0:{intra_port} (Live Reload actif)")
-                    
+                    print(
+                        f"🌐 Intranet démarré sur http://0.0.0.0:{intra_port} (Live Reload actif)"
+                    )
+
                     # Server.serve bloque l'exécution
                     server.serve(port=intra_port, host="0.0.0.0")
                 else:
@@ -294,12 +301,21 @@ if __name__ == "__main__":
         # Prépare le statut des plugins pour la notification
         registre_plugins = get_registre()
         plugins_actifs = [n for n, info in registre_plugins.items() if info["actif"]]
-        plugins_en_erreur = [n for n, info in registre_plugins.items() if not info["actif"] and info["erreur"]]
+        plugins_en_erreur = [
+            n
+            for n, info in registre_plugins.items()
+            if not info["actif"] and info["erreur"]
+        ]
 
         if plugins_actifs:
-            statut_plugins = f"✅ {len(plugins_actifs)} chargé(s) : " + ", ".join(plugins_actifs)
+            statut_plugins = f"✅ {len(plugins_actifs)} chargé(s) : " + ", ".join(
+                plugins_actifs
+            )
             if plugins_en_erreur:
-                statut_plugins += f"<br>⚠️ {len(plugins_en_erreur)} en erreur : " + ", ".join(plugins_en_erreur)
+                statut_plugins += (
+                    f"<br>⚠️ {len(plugins_en_erreur)} en erreur : "
+                    + ", ".join(plugins_en_erreur)
+                )
         else:
             dossier_plugins = os.path.join(DOSSIER_APP, "plugins")
             fichiers_py = (

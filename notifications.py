@@ -17,6 +17,9 @@ def envoyer_notif_teams(message: str) -> None:
     """
     try:
         url = os.getenv("TEAMS_WEBHOOK_URL")
+        if not url:
+            logger.warning("TEAMS_WEBHOOK_URL n'est pas défini, notification ignorée.")
+            return
         headers = {"Content-Type": "application/json"}
         payload = {"text": message}
         response = requests.post(

@@ -8,7 +8,7 @@ import dotenv
 
 from version import __version__
 from flask import Flask, redirect, render_template, request, url_for, flash
-from flask_login import (
+from flask_login import (  # type: ignore[import-untyped]
     LoginManager,
     UserMixin,
     login_user,

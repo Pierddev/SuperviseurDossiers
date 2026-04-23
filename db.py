@@ -19,7 +19,7 @@ def parser_seuils_personnalises() -> dict[str, int]:
     Format attendu : chemin1=seuil1;chemin2=seuil2
     Retourne un dictionnaire {chemin_normalisé: seuil_en_mo}.
     """
-    seuils = {}
+    seuils: dict[str, int] = {}
     valeur = os.getenv("SEUILS_PERSONNALISES", "")
     if not valeur.strip():
         return seuils
@@ -58,9 +58,8 @@ def obtenir_seuil_pour_chemin(
     for chemin_seuil, seuil in seuils_personnalises.items():
         # Vérifie que le chemin commence par le préfixe + séparateur
         # ou est exactement le préfixe
-        if (
-            chemin_normalise == chemin_seuil
-            or chemin_normalise.startswith(chemin_seuil + os.sep)
+        if chemin_normalise == chemin_seuil or chemin_normalise.startswith(
+            chemin_seuil + os.sep
         ):
             if len(chemin_seuil) > meilleure_longueur:
                 meilleure_longueur = len(chemin_seuil)
@@ -74,9 +73,9 @@ def connecter_base_de_donnees() -> mysql.connector.MySQLConnection | None:
     Connecte à la base de données MariaDB.
     """
     try:
-        return mysql.connector.connect(
+        return mysql.connector.connect(  # type: ignore[return-value]
             host=os.getenv("DB_HOST"),
-            port=int(os.getenv("DB_PORT")),
+            port=int(os.getenv("DB_PORT", "3306")),
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASSWORD"),
             database=os.getenv("DB_NAME"),
@@ -168,7 +167,9 @@ def reset_statut_nouveaux_dossiers_racines(
             connexion_mysql.commit()
         curseur.close()
     except mysql.connector.Error as err:
-        envoyer_notif_teams(f"Erreur lors de la réinitialisation des tags 'new' : {err}")
+        envoyer_notif_teams(
+            f"Erreur lors de la réinitialisation des tags 'new' : {err}"
+        )
 
 
 def marquer_dossiers_comme_racines(
@@ -189,8 +190,7 @@ def marquer_dossiers_comme_racines(
             if racine:
                 racine_norm = os.path.normpath(racine)
                 curseur.execute(
-                    "UPDATE folders SET is_root = 1 WHERE path = %s",
-                    (racine_norm,)
+                    "UPDATE folders SET is_root = 1 WHERE path = %s", (racine_norm,)
                 )
         connexion_mysql.commit()
         curseur.close()
@@ -228,9 +228,11 @@ def detecter_dossiers_supprimes(
             (chemin_racine_norm, prefix + "%"),
         )
 
-        supprimes_ids = []
-        supprimes_tuples = []
-        for id_dossier, chemin in curseur:
+        supprimes_ids: list[int] = []
+        supprimes_tuples: list[tuple[int, str]] = []
+        for row in curseur:
+            id_dossier = int(str(row[0])) # safe fallback if it's somehow not int
+            chemin = str(row[1])
             if chemin not in chemins_disque:
                 supprimes_ids.append(id_dossier)
                 supprimes_tuples.append((id_dossier, chemin))
@@ -250,7 +252,7 @@ def detecter_dossiers_supprimes(
             f") latest ON s.id_folder = latest.id_folder AND s.id_scan = latest.max_scan",
             supprimes_ids,
         )
-        dernieres_tailles = {row[0]: row[1] for row in curseur.fetchall()}
+        dernieres_tailles: dict[int, int] = {int(str(row[0])): int(str(row[1])) for row in curseur.fetchall()}
 
         dossiers_supprimes = []
         compteur = 0
@@ -323,8 +325,8 @@ def enregistrer_totaux_scan(
 def traiter_dossiers_en_lot(
     connexion_mysql: mysql.connector.MySQLConnection,
     dossiers_avec_tailles: dict[str, int],
-    chemin_racine: str = None,
-    id_scan: int = None,
+    chemin_racine: str = "",
+    id_scan: int = 0,
 ) -> tuple[list, list, int, int]:
     """
     Traite tous les dossiers en lot pour optimiser les accès BDD.
@@ -336,115 +338,126 @@ def traiter_dossiers_en_lot(
 
     Retourne (nouveaux_dossiers, dossiers_modifies, taille_totale_scan_ko, changement_racine_ko).
     """
-    seuil_defaut = int(os.getenv("SEUIL_DEFAUT"))
+    seuil_defaut = int(os.getenv("SEUIL_DEFAUT", "100"))
     seuils_personnalises = parser_seuils_personnalises()
-    curseur = connexion_mysql.cursor()
+    try:
+        curseur = connexion_mysql.cursor()
 
-    # Normalisation du chemin racine pour comparaison
-    chemin_racine_norm = os.path.normpath(chemin_racine) if chemin_racine else None
+        # Normalisation du chemin racine pour comparaison
+        chemin_racine_norm = os.path.normpath(chemin_racine) if chemin_racine else None
 
-    # Récupère l'id du dernier scan terminé pour comparer les tailles
-    curseur.execute(
-        "SELECT id_scan FROM scans WHERE status = 'completed' "
-        "ORDER BY date_ DESC LIMIT 1"
-    )
-    dernier_scan = curseur.fetchone()
-    id_dernier_scan = dernier_scan[0] if dernier_scan else None
-
-    # Charge TOUS les dossiers existants en mémoire (1 seule requête)
-    curseur.execute("SELECT id_folder, path FROM folders")
-    dossiers_existants = {row[1]: row[0] for row in curseur.fetchall()}
-
-    # Si un scan précédent existe, charger les tailles correspondantes
-    tailles_precedentes = {}
-    if id_dernier_scan:
+        # Récupère l'id du dernier scan terminé pour comparer les tailles
         curseur.execute(
-            "SELECT id_folder, size_kb FROM sizes WHERE id_scan = %s",
-            (id_dernier_scan,),
+            "SELECT id_scan FROM scans WHERE status = 'completed' "
+            "ORDER BY date_ DESC LIMIT 1"
         )
-        tailles_precedentes = {row[0]: row[1] for row in curseur.fetchall()}
+        dernier_scan = curseur.fetchone()
+        id_dernier_scan = dernier_scan[0] if dernier_scan else None
 
-    nouveaux_dossiers = []
-    dossiers_modifies = []
-    taille_totale_scan = 0
-    changement_racine = 0
-    compteur = 0
-    ids_a_resurrecter = []  # IDs à réactiver (batch UPDATE)
+        # Charge TOUS les dossiers existants en mémoire (1 seule requête)
+        curseur.execute("SELECT id_folder, path FROM folders")
+        dossiers_existants: dict[str, int] = {str(row[1]): int(str(row[0])) for row in curseur.fetchall()}
 
-    for chemin, taille_octets in dossiers_avec_tailles.items():
-        taille_en_ko = round(taille_octets / 1024)
-        taille_totale_scan += taille_en_ko
-        chemin_norm = os.path.normpath(chemin)
+        # Si un scan précédent existe, charger les tailles correspondantes
+        tailles_precedentes: dict[int, int] = {}
+        if id_dernier_scan:
+            curseur.execute(
+                "SELECT id_folder, size_kb FROM sizes WHERE id_scan = %s",
+                (int(str(id_dernier_scan)),),
+            )
+            tailles_precedentes = {int(str(row[0])): int(str(row[1])) for row in curseur.fetchall()}
 
-        if chemin in dossiers_existants:
-            # Dossier existant → récupérer l'id et la taille précédente
-            id_dossier = dossiers_existants[chemin]
+        nouveaux_dossiers = []
+        dossiers_modifies = []
+        taille_totale_scan = 0
+        changement_racine = 0
+        compteur = 0
+        ids_a_resurrecter = []  # IDs à réactiver (batch UPDATE)
 
-            # Collecter l'ID pour résurrection batchée
-            ids_a_resurrecter.append(id_dossier)
+        for chemin, taille_octets in dossiers_avec_tailles.items():
+            taille_en_ko = round(taille_octets / 1024)
+            taille_totale_scan += taille_en_ko
+            chemin_norm = os.path.normpath(chemin)
 
-            taille_precedente = tailles_precedentes.get(id_dossier, 0)
-            diff_ko = taille_en_ko - int(taille_precedente)
+            if chemin in dossiers_existants:
+                # Dossier existant → récupérer l'id et la taille précédente
+                id_dossier = dossiers_existants[chemin]
 
-            if chemin_racine_norm and chemin_norm == chemin_racine_norm:
-                changement_racine = diff_ko
+                # Collecter l'ID pour résurrection batchée
+                ids_a_resurrecter.append(id_dossier)
 
-            # N'insérer dans sizes que si la taille a changé
-            if taille_en_ko != int(taille_precedente):
+                taille_precedente = tailles_precedentes.get(id_dossier, 0)
+                diff_ko = taille_en_ko - int(taille_precedente)
+
+                if chemin_racine_norm and chemin_norm == chemin_racine_norm:
+                    changement_racine = diff_ko
+
+                # N'insérer dans sizes que si la taille a changé
+                if taille_en_ko != int(taille_precedente):
+                    curseur.execute(
+                        "INSERT INTO sizes (id_scan, id_folder, size_kb) VALUES (%s, %s, %s)",
+                        (id_scan, id_dossier, taille_en_ko),
+                    )
+
+                # Convertir en Mo pour la comparaison avec le seuil (qui est en Mo)
+                diff_mo = round(diff_ko / 1024)
+                seuil = obtenir_seuil_pour_chemin(
+                    chemin, seuils_personnalises, seuil_defaut
+                )
+                if abs(diff_mo) > seuil:
+                    dossiers_modifies.append(
+                        {
+                            "type": "modification",
+                            "chemin": chemin,
+                            "difference": diff_mo,
+                        }
+                    )
+            else:
+                # Nouveau dossier → INSERT dans folders + sizes
+                curseur.execute(
+                    "INSERT INTO folders (path, is_new) VALUES (%s, 1)",
+                    (chemin,),
+                )
+                id_dossier = int(curseur.lastrowid) if curseur.lastrowid is not None else 0
                 curseur.execute(
                     "INSERT INTO sizes (id_scan, id_folder, size_kb) VALUES (%s, %s, %s)",
                     (id_scan, id_dossier, taille_en_ko),
                 )
 
-            # Convertir en Mo pour la comparaison avec le seuil (qui est en Mo)
-            diff_mo = round(diff_ko / 1024)
-            seuil = obtenir_seuil_pour_chemin(chemin, seuils_personnalises, seuil_defaut)
-            if abs(diff_mo) > seuil:
-                dossiers_modifies.append(
-                    {
-                        "type": "modification",
-                        "chemin": chemin,
-                        "difference": diff_mo,
-                    }
+                if chemin_racine_norm and chemin_norm == chemin_racine_norm:
+                    changement_racine = taille_en_ko
+
+                # Convertir en Mo pour la comparaison avec le seuil
+                taille_en_mo = round(taille_en_ko / 1024)
+                seuil = obtenir_seuil_pour_chemin(
+                    chemin, seuils_personnalises, seuil_defaut
                 )
-        else:
-            # Nouveau dossier → INSERT dans folders + sizes
+                if taille_en_mo > seuil:
+                    nouveaux_dossiers.append(
+                        {
+                            "type": "nouveau",
+                            "chemin": chemin,
+                            "taille": taille_en_mo,
+                        }
+                    )
+
+            compteur += 1
+            if compteur % 5000 == 0:
+                connexion_mysql.commit()
+
+        # Résurrection batchée : réactiver les dossiers supprimés en une seule requête
+        if ids_a_resurrecter:
+            placeholders = ",".join(["%s"] * len(ids_a_resurrecter))
             curseur.execute(
-                "INSERT INTO folders (path, is_new) VALUES (%s, 1)",
-                (chemin,),
+                f"UPDATE folders SET is_deleted = 0 WHERE id_folder IN ({placeholders}) AND is_deleted = 1",
+                ids_a_resurrecter,
             )
-            id_dossier = curseur.lastrowid
-            curseur.execute(
-                "INSERT INTO sizes (id_scan, id_folder, size_kb) VALUES (%s, %s, %s)",
-                (id_scan, id_dossier, taille_en_ko),
-            )
+        connexion_mysql.commit()
+        return nouveaux_dossiers, dossiers_modifies, taille_totale_scan, changement_racine
 
-            if chemin_racine_norm and chemin_norm == chemin_racine_norm:
-                changement_racine = taille_en_ko
-
-            # Convertir en Mo pour la comparaison avec le seuil
-            taille_en_mo = round(taille_en_ko / 1024)
-            seuil = obtenir_seuil_pour_chemin(chemin, seuils_personnalises, seuil_defaut)
-            if taille_en_mo > seuil:
-                nouveaux_dossiers.append(
-                    {
-                        "type": "nouveau",
-                        "chemin": chemin,
-                        "taille": taille_en_mo,
-                    }
-                )
-
-        compteur += 1
-        if compteur % 5000 == 0:
-            connexion_mysql.commit()
-
-    # Résurrection batchée : réactiver les dossiers supprimés en une seule requête
-    if ids_a_resurrecter:
-        placeholders = ','.join(['%s'] * len(ids_a_resurrecter))
-        curseur.execute(
-            f'UPDATE folders SET is_deleted = 0 WHERE id_folder IN ({placeholders}) AND is_deleted = 1',
-            ids_a_resurrecter,
-        )
-    connexion_mysql.commit()
-    curseur.close()
-    return nouveaux_dossiers, dossiers_modifies, taille_totale_scan, changement_racine
+    except mysql.connector.Error as err:
+        envoyer_notif_teams(f"Erreur lors du traitement des dossiers : {err}")
+        return [], [], 0, 0
+    finally:
+        if 'curseur' in locals():
+            curseur.close()
