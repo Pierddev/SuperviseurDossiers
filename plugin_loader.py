@@ -125,8 +125,16 @@ def charger_plugins(dossier_app: str) -> list:
         sys.path.insert(0, dossier)
 
     for nom_module, chemin in _scan_fichiers_plugins():
-        # Ne recharge pas un plugin déjà en registre (sauf rechargement forcé)
-        if nom_module not in _REGISTRE:
+        deja_present = nom_module in _REGISTRE
+        en_erreur = (
+            deja_present
+            and not _REGISTRE[nom_module]["actif"]
+            and _REGISTRE[nom_module].get("erreur")
+        )
+
+        if not deja_present or en_erreur:
+            if en_erreur and nom_module in sys.modules:
+                del sys.modules[nom_module]
             etat = _charger_module(nom_module, chemin)
             _REGISTRE[nom_module] = etat
 

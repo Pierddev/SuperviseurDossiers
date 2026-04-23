@@ -44,7 +44,7 @@ from db import (
 )
 from notifications import envoyer_notif_teams
 from scanner import scanner
-from plugin_loader import charger_plugins, get_registre, reinitialiser_plugins_en_erreur
+from plugin_loader import charger_plugins, get_registre
 
 
 def verifier_chemins_manquants(chemins_manquants: list[str]) -> None:
@@ -168,36 +168,35 @@ if __name__ == "__main__":
 
         # Charge et planifie les plugins
         # (avec retry si le dossier plugins/ est temporairement inaccessible au démarrage du serveur)
+        dossier_plugins = os.path.join(DOSSIER_APP, "plugins")
+        fichiers_py = (
+            [
+                f
+                for f in os.listdir(dossier_plugins)
+                if f.endswith(".py") and not f.startswith("__")
+            ]
+            if os.path.exists(dossier_plugins)
+            else []
+        )
+        plugins_attendus = len(fichiers_py)
+
         print("🔌 Chargement des plugins...")
         plugins = charger_plugins(DOSSIER_APP)
 
-        # Retry si aucun plugin chargé (ex: partage réseau pas encore monté au boot)
-        if not plugins:
-            dossier_plugins = os.path.join(DOSSIER_APP, "plugins")
-            fichiers_py = (
-                [
-                    f
-                    for f in os.listdir(dossier_plugins)
-                    if f.endswith(".py") and not f.startswith("__")
-                ]
-                if os.path.exists(dossier_plugins)
-                else []
-            )
-
-            if fichiers_py:
-                # Des fichiers .py existent mais n'ont pas pu être chargés → on réessaie
-                MAX_RETRIES = 5
-                DELAI_RETRY = 60  # secondes
-                for tentative in range(1, MAX_RETRIES + 1):
-                    print(
-                        f"⚠️ Aucun plugin chargé alors que {len(fichiers_py)} fichier(s) existent. Nouvelle tentative {tentative}/{MAX_RETRIES} dans {DELAI_RETRY}s..."
-                    )
-                    time.sleep(DELAI_RETRY)
-                    reinitialiser_plugins_en_erreur()
-                    plugins = charger_plugins(DOSSIER_APP)
-                    if plugins:
-                        print(f"✅ Plugins chargés lors de la tentative {tentative}.")
-                        break
+        # Retry si des plugins sont en erreur (ex: partage réseau pas encore monté au boot)
+        if len(plugins) < plugins_attendus:
+            MAX_RETRIES = 5
+            DELAI_RETRY = 60  # secondes
+            for tentative in range(1, MAX_RETRIES + 1):
+                print(
+                    f"⚠️ {plugins_attendus - len(plugins)} plugin(s) non chargé(s) sur {plugins_attendus}. "
+                    f"Nouvelle tentative {tentative}/{MAX_RETRIES} dans {DELAI_RETRY}s..."
+                )
+                time.sleep(DELAI_RETRY)
+                plugins = charger_plugins(DOSSIER_APP)
+                if len(plugins) == plugins_attendus:
+                    print(f"✅ Tous les plugins chargés lors de la tentative {tentative}.")
+                    break
 
         if plugins:
             print(f"✅ {len(plugins)} plugin(s) chargé(s) :")
