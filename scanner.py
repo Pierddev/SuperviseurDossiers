@@ -32,7 +32,11 @@ def scanner() -> None:
     debut_scan = time.time()
     try:
         connexion_mysql = connecter_base_de_donnees()
+        if not connexion_mysql:
+            return
         id_scan = creer_scan(connexion_mysql)
+        if not id_scan:
+            return
 
         # Parse les chemins racines séparés par des virgules
         chemins_racines = os.getenv("CHEMINS_RACINES", "").split(",")

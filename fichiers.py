@@ -40,7 +40,7 @@ def est_chemin_exclu(chemin: str, chemins_exclus: list[str]) -> bool:
 
 
 def lister_tous_les_dossier(
-    chemin_racine: str, chemins_exclus: list[str] = None
+    chemin_racine: str, chemins_exclus: list[str] | None = None
 ) -> list[str]:
     """
     Liste tous les dossiers à partir d'un chemin racine.
@@ -63,13 +63,13 @@ def lister_tous_les_dossier(
 
 
 def scanner_arborescence(
-    chemin_racine: str, chemins_exclus: list[str] = None
+    chemin_racine: str, chemins_exclus: list[str] | None = None
 ) -> dict[str, int]:
     """
     Parcourt l'arborescence en un seul pass (bottom-up) et retourne un dictionnaire
     {chemin_dossier: taille_en_octets} incluant les sous-dossiers.
     """
-    tailles = {}
+    tailles: dict[str, int] = {}
 
     for dossier, sous_dossiers, fichiers in os.walk(
         chemin_racine, topdown=False, followlinks=False

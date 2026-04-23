@@ -15,12 +15,12 @@ REM Génère le nouvel exe (avec openpyxl, locales MySQL et ressources intranet)
 .venv\Scripts\pyinstaller --onefile --name SuperviseurDossiers --icon=icone.ico --hidden-import openpyxl --collect-all mysql.connector --add-data "intranet/templates;intranet/templates" --add-data "intranet/static;intranet/static" main.py
 
 REM Copie le nouvel exe à côté de ce script
-@REM copy /Y dist\SuperviseurDossiers.exe \\srv56002\Utilisateurs\PierreD\SuperviseurDossiers
-@REM copy /Y .env.example \\srv56002\Utilisateurs\PierreD\SuperviseurDossiers
-@REM rename \\srv56002\Utilisateurs\PierreD\SuperviseurDossiers\.env.example .env
+@REM copy /Y dist\SuperviseurDossiers.exe \\server\user\me\SuperviseurDossiers
+@REM copy /Y .env.example \\server\user\me\SuperviseurDossiers
+@REM rename \\server\user\me\SuperviseurDossiers\.env.example .env
 
 REM Copie le dossier des plugins
-@REM xcopy /S /I /Y plugins \\srv56002\Utilisateurs\PierreD\SuperviseurDossiers\plugins
+@REM xcopy /S /I /Y plugins \\server\user\me\SuperviseurDossiers\plugins
 
 echo === Mise a jour terminee ===
 pause

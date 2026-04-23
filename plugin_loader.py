@@ -28,7 +28,7 @@ def _scan_fichiers_plugins() -> list[tuple[str, str]]:
     pour chaque fichier .py valide (non préfixé par '__').
     """
     dossier = _dossier_plugins()
-    resultats = []
+    resultats: list[tuple[str, str]] = []
     if not os.path.exists(dossier):
         return resultats
     for nom_fichier in sorted(os.listdir(dossier)):
@@ -138,7 +138,11 @@ def charger_plugins(dossier_app: str) -> list:
             etat = _charger_module(nom_module, chemin)
             _REGISTRE[nom_module] = etat
 
-    return [info["module"] for info in _REGISTRE.values() if info["actif"] and info["module"]]
+    return [
+        info["module"]
+        for info in _REGISTRE.values()
+        if info["actif"] and info["module"]
+    ]
 
 
 def recharger_plugins() -> None:
@@ -167,7 +171,12 @@ def recharger_plugins() -> None:
         etat = _charger_module(nom_module, chemin)
 
         # Si l'utilisateur avait explicitement désactivé ce plugin, on respecte son choix
-        if ancien and not ancien.get("actif") and ancien.get("module") is None and not ancien.get("erreur"):
+        if (
+            ancien
+            and not ancien.get("actif")
+            and ancien.get("module") is None
+            and not ancien.get("erreur")
+        ):
             # Désactivé manuellement (pas en erreur)
             etat["actif"] = False
 
@@ -187,7 +196,8 @@ def get_registre() -> dict[str, dict]:
             "actif": info.get("actif", False),
             "erreur": info.get("erreur"),
             "chemin": info.get("chemin", ""),
-            "valide": info.get("module") is not None or (not info.get("actif") and info.get("erreur") is None),
+            "valide": info.get("module") is not None
+            or (not info.get("actif") and info.get("erreur") is None),
         }
     return resultat
 
@@ -200,7 +210,10 @@ def activer_plugin(nom: str) -> dict:
     """
     chemin = os.path.join(_dossier_plugins(), f"{nom}.py")
     if not os.path.exists(chemin):
-        return {"ok": False, "erreur": f"Fichier '{nom}.py' introuvable dans le dossier plugins."}
+        return {
+            "ok": False,
+            "erreur": f"Fichier '{nom}.py' introuvable dans le dossier plugins.",
+        }
 
     # Supprime l'ancienne version du module si présente
     if nom in sys.modules:
