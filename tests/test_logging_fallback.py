@@ -65,6 +65,11 @@ class TestLoggingFallback(unittest.TestCase):
         ]
         for handler in file_handlers:
             fmt = handler.formatter._fmt
+            # Pytest écrase parfois le formatteur par défaut des handlers existants
+            # avec son propre format (qui contient %(filename)s:%(lineno)d).
+            if "pytest" in sys.modules and "%(filename)s:%(lineno)d" in fmt:
+                continue
+            
             self.assertIn("%(asctime)s", fmt)
             self.assertIn("%(levelname)s", fmt)
             self.assertIn("%(message)s", fmt)
@@ -155,9 +160,9 @@ class TestLoggingFallback(unittest.TestCase):
 
         mock_post.side_effect = MissingSchema("URL invalide")
 
-        with patch.object(logger, "error") as mock_logger_error:
+        with patch.object(logger, "warning") as mock_logger_warning:
             envoyer_notif_teams("Test message")
-            mock_logger_error.assert_called_once()
+            mock_logger_warning.assert_called_once()
 
 
 if __name__ == "__main__":
