@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install ruff mypy pytest coverage
+
+      - name: Lint with Ruff
+        run: ruff check .
+
+      - name: Type check with MyPy
+        run: mypy .
+
+      - name: Run tests with pytest
+        run: pytest -v
+
+      - name: Coverage report
+        run: |
+          coverage run -m pytest
+          coverage report
