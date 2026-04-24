@@ -710,3 +710,16 @@ TypeError: 'NoneType' object is not subscriptable
 2026-04-24 09:38:40,859 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
 2026-04-24 09:39:15,690 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
 2026-04-24 09:40:11,086 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 09:48:04,986 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-24 10:34:04,856 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 10:34:28,687 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 10:37:29,332 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 10:37:52,010 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 10:38:30,684 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 10:39:40,979 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 10:39:45,053 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 10:39:46,277 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 10:39:56,714 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 10:40:08,403 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 11:27:08,863 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 11:28:27,372 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
