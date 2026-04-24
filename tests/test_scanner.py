@@ -79,7 +79,7 @@ class TestScanner(unittest.TestCase):
 
         args = mock_terminer.call_args[0]
         self.assertEqual(args[1], 1)  # id_scan
-        self.assertEqual(args[2], "termine")  # statut
+        self.assertEqual(args[2], "completed")  # statut
 
     @patch.dict(os.environ, {"CHEMINS_RACINES": "C:\\test", "CHEMINS_EXCLUS": ""})
     @patch("scanner.deconnecter_base_de_donnees")
@@ -150,7 +150,7 @@ class TestScanner(unittest.TestCase):
         message = mock_notif.call_args[0][0]
         self.assertIn("Dossiers modifiés", message)
         self.assertIn("C: > modifie", message)
-        self.assertIn("+150", message)
+        self.assertIn("150 Mo", message)
 
     @patch.dict(os.environ, {"CHEMINS_RACINES": "C:\\test", "CHEMINS_EXCLUS": ""})
     @patch("scanner.deconnecter_base_de_donnees")
@@ -242,7 +242,8 @@ class TestScanner(unittest.TestCase):
         scanner()
 
         message = mock_notif.call_args[0][0]
-        self.assertIn("-200", message)
+        self.assertIn("200 Mo", message)
+        self.assertIn("-", message)
 
 
 if __name__ == "__main__":

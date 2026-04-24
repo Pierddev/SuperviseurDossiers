@@ -671,3 +671,42 @@ TypeError: 'NoneType' object is not subscriptable
 2026-04-23 22:30:47,623 - INFO - Browser Connected: http://127.0.0.1:5000/plugins
 2026-04-23 22:30:49,833 - INFO - Browser Connected: http://127.0.0.1:5000/scans
 2026-04-23 22:30:50,212 - INFO - Browser Connected: http://127.0.0.1:5000/plugins
+2026-04-24 08:58:43,119 - INFO - Serving on http://0.0.0.0:5000
+2026-04-24 08:58:43,129 - INFO - Start watching changes
+2026-04-24 08:58:43,129 - INFO - Start detecting changes
+2026-04-24 08:58:45,276 - INFO - Browser Connected: http://127.0.0.1:5000/plugins
+2026-04-24 08:58:47,463 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-24 08:58:48,723 - INFO - Browser Connected: http://127.0.0.1:5000/history
+2026-04-24 08:58:50,071 - INFO - Browser Connected: http://127.0.0.1:5000/settings
+2026-04-24 08:58:50,970 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-24 08:58:52,257 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-24 08:58:52,843 - INFO - Browser Connected: http://127.0.0.1:5000/history
+2026-04-24 08:58:55,540 - INFO - Browser Connected: http://127.0.0.1:5000/history
+2026-04-24 08:58:56,209 - INFO - Browser Connected: http://127.0.0.1:5000/settings
+2026-04-24 09:00:09,868 - INFO - Browser Connected: http://127.0.0.1:5000/settings
+2026-04-24 09:00:16,366 - INFO - Serving on http://0.0.0.0:5000
+2026-04-24 09:00:16,375 - INFO - Start watching changes
+2026-04-24 09:00:16,375 - INFO - Start detecting changes
+2026-04-24 09:00:18,042 - INFO - Browser Connected: http://127.0.0.1:5000/settings
+2026-04-24 09:00:37,444 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-24 09:00:42,797 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-24 09:00:43,748 - INFO - Browser Connected: http://127.0.0.1:5000/history
+2026-04-24 09:00:44,856 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-24 09:00:45,813 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-24 09:01:54,514 - INFO - Browser Connected: http://127.0.0.1:5000/history
+2026-04-24 09:02:22,202 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-24 09:03:39,853 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-24 09:03:40,827 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-24 09:03:41,793 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-24 09:15:46,530 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-24 09:15:52,347 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-24 09:27:31,635 - INFO - Browser Connected: http://127.0.0.1:5000/
+2026-04-24 09:27:33,032 - INFO - Browser Connected: http://127.0.0.1:5000/history
+2026-04-24 09:27:34,064 - INFO - Browser Connected: http://127.0.0.1:5000/scans
+2026-04-24 09:37:27,852 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 09:37:45,923 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 09:38:03,188 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 09:38:30,491 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 09:38:40,859 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 09:39:15,690 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau
+2026-04-24 09:40:11,086 - ERROR - Erreur lors de l'envoi de la notification : Erreur reseau

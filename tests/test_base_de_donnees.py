@@ -19,7 +19,7 @@ from db import (
     deconnecter_base_de_donnees,
     creer_scan,
     terminer_scan,
-    inserer_ou_mettre_a_jour_dossier,
+    traiter_dossiers_en_lot,
     parser_seuils_personnalises,
     obtenir_seuil_pour_chemin,
 )
@@ -93,15 +93,15 @@ class TestCreerScan(unittest.TestCase):
         self.assertEqual(resultat, 42)
 
     def test_execute_insert(self):
-        """Doit exécuter une requête INSERT avec le statut 'en_cours'."""
+        """Doit exécuter une requête INSERT avec le statut 'in_progress'."""
         mock_connexion = MagicMock()
         mock_curseur = MagicMock()
         mock_connexion.cursor.return_value = mock_curseur
 
         creer_scan(mock_connexion)
         requete = mock_curseur.execute.call_args[0][0]
-        self.assertIn("INSERT INTO sudo_scans", requete)
-        self.assertIn("en_cours", requete)
+        self.assertIn("INSERT INTO scans", requete)
+        self.assertIn("in_progress", requete)
 
     def test_fait_un_commit(self):
         """Doit faire un commit après l'insertion."""
@@ -150,11 +150,11 @@ class TestTerminerScan(unittest.TestCase):
         mock_curseur = MagicMock()
         mock_connexion.cursor.return_value = mock_curseur
 
-        terminer_scan(mock_connexion, 42, "termine")
+        terminer_scan(mock_connexion, 42, "completed")
         requete = mock_curseur.execute.call_args[0][0]
         params = mock_curseur.execute.call_args[0][1]
-        self.assertIn("UPDATE sudo_scans", requete)
-        self.assertEqual(params, ("termine", 42))
+        self.assertIn("UPDATE scans", requete)
+        self.assertEqual(params, ("completed", 42))
 
     def test_fait_un_commit(self):
         """Doit faire un commit après la mise à jour."""
@@ -162,7 +162,7 @@ class TestTerminerScan(unittest.TestCase):
         mock_curseur = MagicMock()
         mock_connexion.cursor.return_value = mock_curseur
 
-        terminer_scan(mock_connexion, 1, "termine")
+        terminer_scan(mock_connexion, 1, "completed")
         mock_connexion.commit.assert_called_once()
 
     def test_ferme_le_curseur(self):
@@ -171,7 +171,7 @@ class TestTerminerScan(unittest.TestCase):
         mock_curseur = MagicMock()
         mock_connexion.cursor.return_value = mock_curseur
 
-        terminer_scan(mock_connexion, 1, "termine")
+        terminer_scan(mock_connexion, 1, "completed")
         mock_curseur.close.assert_called_once()
 
     @patch("db.envoyer_notif_teams")
@@ -180,105 +180,82 @@ class TestTerminerScan(unittest.TestCase):
         mock_connexion = MagicMock()
         mock_connexion.cursor.side_effect = mysql.connector.Error("Erreur SQL")
 
-        terminer_scan(mock_connexion, 1, "termine")
+        terminer_scan(mock_connexion, 1, "completed")
         mock_notif.assert_called_once()
         self.assertIn(
             "Erreur lors de la terminaison du scan", mock_notif.call_args[0][0]
         )
 
 
-class TestInsererOuMettreAJourDossier(unittest.TestCase):
-    """Tests pour la fonction inserer_ou_mettre_a_jour_dossier."""
+class TestTraiterDossiersEnLot(unittest.TestCase):
+    """Tests pour la fonction traiter_dossiers_en_lot."""
 
-    def _mock_connexion_nouveau_dossier(self):
-        """Crée un mock pour le cas d'un nouveau dossier (SELECT retourne None)."""
+    def _mock_connexion(self, dernier_scan_id=1, dossiers_existants=None, tailles_precedentes=None):
         mock_connexion = MagicMock()
         mock_curseur = MagicMock()
-        mock_curseur.fetchone.return_value = None  # dossier n'existe pas
-        mock_curseur.lastrowid = 1
-        mock_connexion.cursor.return_value = mock_curseur
-        return mock_connexion, mock_curseur
-
-    def _mock_connexion_dossier_existant(self, taille_actuelle=50):
-        """Crée un mock pour le cas d'un dossier existant."""
-        mock_connexion = MagicMock()
-        mock_curseur = MagicMock()
-        # Premier fetchone: SELECT sudo_dossiers (id=1, chemin, est_nouveau=0)
-        # Deuxième fetchone: SELECT sudo_tailles (id=1, taille_actuel, taille_dernier)
-        mock_curseur.fetchone.side_effect = [
-            (1, "C:\\test", 0),  # sudo_dossiers
-            (1, taille_actuelle, None),  # sudo_tailles
+        
+        if dossiers_existants is None:
+            dossiers_existants = []
+        if tailles_precedentes is None:
+            tailles_precedentes = []
+            
+        mock_curseur.fetchone.return_value = (dernier_scan_id,) if dernier_scan_id else None
+        
+        mock_curseur.fetchall.side_effect = [
+            dossiers_existants,
+            tailles_precedentes
         ]
+        
+        mock_curseur.lastrowid = 42
         mock_connexion.cursor.return_value = mock_curseur
         return mock_connexion, mock_curseur
 
     @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
-    def test_nouveau_dossier_petit_retourne_none(self):
-        """Un nouveau dossier sous le seuil ne doit pas déclencher de notification."""
-        mock_connexion, _ = self._mock_connexion_nouveau_dossier()
-        resultat = inserer_ou_mettre_a_jour_dossier(mock_connexion, "C:\\test", 50)
-        self.assertIsNone(resultat)
+    def test_nouveaux_dossiers_detectes(self):
+        """Un nouveau dossier au-dessus du seuil doit être détecté."""
+        dossiers = {"C:\\test": 115343360}  # ~110 Mo
+        mock_conn, _ = self._mock_connexion()
+        nouveaux, modifies, total_ko, diff_racine = traiter_dossiers_en_lot(mock_conn, dossiers, id_scan=2)
+        
+        self.assertEqual(len(nouveaux), 1)
+        self.assertEqual(nouveaux[0]["type"], "nouveau")
+        self.assertEqual(nouveaux[0]["chemin"], "C:\\test")
+        self.assertEqual(len(modifies), 0)
 
     @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
-    def test_nouveau_dossier_gros_retourne_dict(self):
-        """Un nouveau dossier au-dessus du seuil doit retourner un dictionnaire."""
-        mock_connexion, _ = self._mock_connexion_nouveau_dossier()
-        resultat = inserer_ou_mettre_a_jour_dossier(mock_connexion, "C:\\gros", 200)
-        self.assertIsNotNone(resultat)
-        self.assertEqual(resultat["type"], "nouveau")
-        self.assertEqual(resultat["chemin"], "C:\\gros")
-        self.assertEqual(resultat["taille"], 200)
+    def test_dossier_modifie_detecte(self):
+        """Une modification au-dessus du seuil doit être détectée."""
+        dossiers = {"C:\\test": 204800000}  # ~195 Mo
+        mock_conn, _ = self._mock_connexion(
+            dernier_scan_id=1,
+            dossiers_existants=[(1, "C:\\test")],
+            tailles_precedentes=[(1, 51200)]  # 50 Mo en Ko
+        )
+        
+        nouveaux, modifies, total_ko, diff_racine = traiter_dossiers_en_lot(mock_conn, dossiers, id_scan=2)
+        
+        self.assertEqual(len(nouveaux), 0)
+        self.assertEqual(len(modifies), 1)
+        self.assertEqual(modifies[0]["type"], "modification")
+        self.assertEqual(modifies[0]["chemin"], "C:\\test")
+        self.assertTrue(modifies[0]["difference"] > 100)
 
     @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
-    def test_nouveau_dossier_insere_dans_deux_tables(self):
-        """Un nouveau dossier doit être inséré dans sudo_dossiers ET sudo_tailles."""
-        mock_connexion, mock_curseur = self._mock_connexion_nouveau_dossier()
-        inserer_ou_mettre_a_jour_dossier(mock_connexion, "C:\\test", 50)
-        requetes = [appel[0][0] for appel in mock_curseur.execute.call_args_list]
-        self.assertTrue(any("INSERT INTO sudo_dossiers" in r for r in requetes))
-        self.assertTrue(any("INSERT INTO sudo_tailles" in r for r in requetes))
-
-    @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
-    def test_dossier_existant_petite_modif_retourne_none(self):
-        """Une modification sous le seuil ne doit pas déclencher de notification."""
-        mock_connexion, _ = self._mock_connexion_dossier_existant(taille_actuelle=50)
-        resultat = inserer_ou_mettre_a_jour_dossier(mock_connexion, "C:\\test", 60)
-        self.assertIsNone(resultat)
-
-    @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
-    def test_dossier_existant_grosse_modif_retourne_dict(self):
-        """Une modification au-dessus du seuil doit retourner un dictionnaire."""
-        mock_connexion, _ = self._mock_connexion_dossier_existant(taille_actuelle=50)
-        resultat = inserer_ou_mettre_a_jour_dossier(mock_connexion, "C:\\test", 200)
-        self.assertIsNotNone(resultat)
-        self.assertEqual(resultat["type"], "modification")
-        self.assertEqual(resultat["chemin"], "C:\\test")
-        self.assertEqual(resultat["difference"], 150)  # 200 - 50
-
-    @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
-    def test_dossier_existant_reduction_taille(self):
-        """Une réduction de taille au-dessus du seuil doit aussi être détectée."""
-        mock_connexion, _ = self._mock_connexion_dossier_existant(taille_actuelle=300)
-        resultat = inserer_ou_mettre_a_jour_dossier(mock_connexion, "C:\\test", 100)
-        self.assertIsNotNone(resultat)
-        self.assertEqual(resultat["difference"], -200)  # 100 - 300
+    def test_petit_dossier_ignore(self):
+        """Une modification ou un dossier sous le seuil ne déclenche rien."""
+        dossiers = {"C:\\test": 51200000}  # ~48 Mo
+        mock_conn, _ = self._mock_connexion()
+        nouveaux, modifies, total_ko, diff_racine = traiter_dossiers_en_lot(mock_conn, dossiers, id_scan=2)
+        self.assertEqual(len(nouveaux), 0)
+        self.assertEqual(len(modifies), 0)
 
     @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
     def test_fait_un_commit(self):
-        """Doit faire un commit après l'opération."""
-        mock_connexion, _ = self._mock_connexion_nouveau_dossier()
-        inserer_ou_mettre_a_jour_dossier(mock_connexion, "C:\\test", 50)
-        mock_connexion.commit.assert_called()
-
-    @patch.dict(os.environ, {"SEUIL_DEFAUT": "100"})
-    @patch("db.envoyer_notif_teams")
-    def test_erreur_sql_envoie_notification(self, mock_notif):
-        """Doit envoyer une notification Teams en cas d'erreur SQL."""
-        mock_connexion = MagicMock()
-        mock_connexion.cursor.side_effect = mysql.connector.Error("Erreur SQL")
-        inserer_ou_mettre_a_jour_dossier(mock_connexion, "C:\\test", 50)
-        mock_notif.assert_called_once()
-        self.assertIn("Erreur lors de l'insertion", mock_notif.call_args[0][0])
+        """Doit faire un commit après l'opération (car on a moins de 5000 dossiers)."""
+        dossiers = {"C:\\test": 51200000}
+        mock_conn, _ = self._mock_connexion()
+        traiter_dossiers_en_lot(mock_conn, dossiers, id_scan=2)
+        mock_conn.commit.assert_called()
 
 
 class TestParserSeuilsPersonnalises(unittest.TestCase):
@@ -306,22 +283,22 @@ class TestParserSeuilsPersonnalises(unittest.TestCase):
         self.assertIn(chemin_normalise, resultat)
         self.assertEqual(resultat[chemin_normalise], 50)
 
-    @patch.dict(os.environ, {"SEUILS_PERSONNALISES": "D:\\Projets=50;D:\\Archives=500"})
+    @patch.dict(os.environ, {"SEUILS_PERSONNALISES": "D:\\Projets=50,D:\\Archives=500"})
     def test_plusieurs_seuils(self):
-        """Plusieurs seuils séparés par ; doivent être correctement parsés."""
+        """Plusieurs seuils séparés par , doivent être correctement parsés."""
         resultat = parser_seuils_personnalises()
         self.assertEqual(len(resultat), 2)
         self.assertEqual(resultat[os.path.normpath("D:\\Projets")], 50)
         self.assertEqual(resultat[os.path.normpath("D:\\Archives")], 500)
 
-    @patch.dict(os.environ, {"SEUILS_PERSONNALISES": "D:\\Projets=abc;D:\\Archives=500"})
+    @patch.dict(os.environ, {"SEUILS_PERSONNALISES": "D:\\Projets=abc,D:\\Archives=500"})
     def test_seuil_non_numerique_est_ignore(self):
         """Un seuil non numérique doit être ignoré sans erreur."""
         resultat = parser_seuils_personnalises()
         self.assertEqual(len(resultat), 1)
         self.assertEqual(resultat[os.path.normpath("D:\\Archives")], 500)
 
-    @patch.dict(os.environ, {"SEUILS_PERSONNALISES": "pasdegal;=100;D:\\Ok=200"})
+    @patch.dict(os.environ, {"SEUILS_PERSONNALISES": "pasdegal,=100,D:\\Ok=200"})
     def test_entrees_malformees_sont_ignorees(self):
         """Les entrées sans = ou avec chemin vide doivent être ignorées."""
         resultat = parser_seuils_personnalises()
