@@ -1,11 +1,11 @@
 altgraph==0.17.5
-certifi==2026.2.25
+certifi==2026.4.22
 charset-normalizer==3.4.7
-idna==3.11
-mysql-connector-python==9.6.0
-packaging==26.1
+idna==3.13
+mysql-connector-python==9.7.0
+packaging==26.2
 pefile==2024.8.26
-pyinstaller==6.19.0
+pyinstaller==6.20.0
 pyinstaller-hooks-contrib==2026.4
 python-dotenv==1.2.2
 pywin32-ctypes==0.2.3
