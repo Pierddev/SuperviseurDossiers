@@ -1,0 +1,57 @@
+services:
+  superviseur:
+    build: .
+    container_name: superviseur-dossiers
+    restart: always   # Automatic restart on reboot / crash
+
+    ports:
+      - "5000:5000"   # Flask Intranet
+
+    volumes:
+      # ── Configuration ──────────────────────────────────────────
+      # .env file mounted in read/write (required for settings backup)
+      - ./.env:/app/.env
+
+      # ── Dynamic code (hot-swap without rebuild) ─────────────────
+      - ./plugins:/app/plugins
+
+      # ── Log persistence ───────────────────────────────────
+      - ./logs:/app/logs
+
+      # ── Windows folders to monitor ─────────────────────────
+      # Adapt these paths to your real environment.
+      # Docker Desktop Windows syntax: C:/folder → /data/C/folder
+      #
+      # Examples (uncomment / modify as needed):
+      - C:/:/data/C:ro                # Full C:\ drive (read-only)
+      - D:/:/data/D:ro            # D:\ drive
+      #
+      # UNC network share (\\NASServer\Share):
+      #   Option A: mount on host via "net use Z: \\NASServer\Share"
+      #             then map: - Z:/:/data/NAS:ro
+      #   Option B (Linux Docker Engine): see smb driver comment below
+
+    environment:
+      # Linux paths corresponding to the volumes above
+      # CHEMINS_RACINES=/data/C,/data/D/Data
+      INTRANET_ENABLED: "1"
+      INTRA_PORT: "5000"
+      FLASK_DEBUG: "0"
+      TZ: "Europe/Paris"   # Local timezone — otherwise schedule() is in UTC
+
+    # ── Container health ────────────────────────────────────────
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/login')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+# ── Example: CIFS volume for network share (Linux Docker Engine only) ──
+# volumes:
+#   nas_share:
+#     driver: local
+#     driver_opts:
+#       type: cifs
+#       o: "username=USER,password=PASS,vers=3.0"
+#       device: "//NAS"

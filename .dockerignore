@@ -1,0 +1,56 @@
+# Python Virtual Environment
+.venv/
+venv/
+env/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# PyInstaller artifacts (useless in Docker)
+build/
+dist/
+*.spec
+*.exe
+
+# Git
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# Logs (mounted as volumes)
+*.log
+logs/
+
+# Local environment files
+.env
+.env.docker
+
+# Tests
+tests/
+*.coveragerc
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Documentation
+docs/
+
+# IDE
+.vscode/
+.idea/
+.kilo/
+
+# Windows specific files
+*.bat
+icone.ico
+SuperviseurDossiers.spec
+exe_generator.bat
+test_notif.bat
+
+# SQL (migrations managed separately)
+sql/

@@ -142,8 +142,12 @@ if __name__ == "__main__":
         # Mode planifié (comportement par défaut)
         heure_scan = os.getenv("HEURE_SCAN", "17:30")
 
-        # Planification du scan
-        schedule.every().day.at(heure_scan).do(scanner)
+        def scanner_en_thread():
+            """Lance le scan dans un thread daemon pour ne pas bloquer la boucle principale."""
+            threading.Thread(target=scanner, daemon=True, name="scan-quotidien").start()
+
+        # Planification du scan (dans un thread pour ne pas bloquer run_pending)
+        schedule.every().day.at(heure_scan).do(scanner_en_thread).tag("daily_scan")
 
         delai_verification = int(os.getenv("DELAI_VERIFICATION", 300))
 
@@ -235,15 +239,66 @@ if __name__ == "__main__":
                     # lors des modifications de CSS (style inline dans les templates) ou de fichiers statiques.
                     from livereload import Server  # type: ignore[import-untyped]
 
+                    # Dict mutable partagé par référence — évite nonlocal dans les fonctions imbriquées
+                    _etat = {
+                        "heure_scan": heure_scan,
+                        "delai_verification": delai_verification,
+                    }
+
                     # On lance l'ordonnanceur dans un thread séparé (uniquement dans le processus principal de livereload)
-                    def lancer_ordonnanceur():
+                    def executer_ordonnanceur():
+                        """Boucle de l'ordonnanceur avec support du rechargement dynamique."""
                         print("⏱️  Ordonnanceur de scan démarré en arrière-plan")
+                        env_path_ord = os.path.join(DOSSIER_APP, ".env")
+
                         while True:
                             schedule.run_pending()
-                            time.sleep(delai_verification)
+
+                            try:
+                                # Relit le .env à chaque itération
+                                dotenv.load_dotenv(env_path_ord, override=True)
+                                h_env = os.getenv("HEURE_SCAN", "17:30")
+                                d_env = int(os.getenv("DELAI_VERIFICATION", 300))
+
+                                # Mise à jour de l'heure de scan si modifiée
+                                if h_env != _etat["heure_scan"]:
+                                    print(
+                                        f"⏰ Heure de scan modifiée : "
+                                        f"{_etat['heure_scan']} → {h_env}"
+                                    )
+                                    schedule.clear("daily_scan")
+                                    schedule.every().day.at(h_env).do(scanner_en_thread).tag("daily_scan")
+                                    _etat["heure_scan"] = h_env
+
+                                    # Cas critique : heure déjà passée
+                                    h_part, m_part = h_env.split(":")
+                                    maintenant = datetime.now()
+                                    heure_cible = maintenant.replace(
+                                        hour=int(h_part), minute=int(m_part),
+                                        second=0, microsecond=0
+                                    )
+                                    if maintenant >= heure_cible:
+                                        print(
+                                            f"⏳ {h_env} déjà passé "
+                                            f"— lancement du scan immédiat..."
+                                        )
+                                        scanner_en_thread()
+
+                                # Mise à jour du délai de vérification
+                                if d_env != _etat["delai_verification"]:
+                                    print(
+                                        f"⏱️ Délai mis à jour : "
+                                        f"{_etat['delai_verification']}s → {d_env}s"
+                                    )
+                                    _etat["delai_verification"] = d_env
+
+                            except Exception as e:
+                                print(f"⚠️ Erreur rechargement config : {e}")
+
+                            time.sleep(_etat["delai_verification"])
 
                     thread_scan = threading.Thread(
-                        target=lancer_ordonnanceur, daemon=True
+                        target=executer_ordonnanceur, daemon=True
                     )
                     thread_scan.start()
 
@@ -281,73 +336,76 @@ if __name__ == "__main__":
                 f"ℹ️ {len(chemins_manquants)} chemin(s) manquant(s) seront re-vérifiés toutes les 10 minutes."
             )
 
-        # Vérifie la connexion à la base de données au démarrage
-        statut_bdd = "OK"
-        try:
-            test_connexion = connecter_base_de_donnees()
-            if test_connexion:
-                print("✅ Connexion à la base de données : OK")
-                deconnecter_base_de_donnees(test_connexion)
-            else:
-                statut_bdd = "ÉCHEC"
-                print("❌ Connexion à la base de données : ÉCHEC")
-        except Exception as e:
-            statut_bdd = f"ÉCHEC ({e})"
-            print(f"❌ Connexion à la base de données : {statut_bdd}")
+        # Vérifie la connexion BDD + envoie la notification de démarrage dans un thread
+        # pour ne pas bloquer la boucle principale (le scheduler doit démarrer immédiatement)
+        def _notif_demarrage():
+            statut_bdd = "OK"
+            try:
+                test_connexion = connecter_base_de_donnees()
+                if test_connexion:
+                    print("✅ Connexion à la base de données : OK")
+                    deconnecter_base_de_donnees(test_connexion)
+                else:
+                    statut_bdd = "ÉCHEC"
+                    print("❌ Connexion à la base de données : ÉCHEC")
+            except Exception as e:
+                statut_bdd = f"ÉCHEC ({e})"
+                print(f"❌ Connexion à la base de données : {statut_bdd}")
 
-        # Envoie une notification Teams pour confirmer le démarrage du script
-        statut_bdd_emoji = "✅ OK" if "OK" in statut_bdd else "❌ ÉCHEC"
+            statut_bdd_emoji = "✅ OK" if "OK" in statut_bdd else "❌ ÉCHEC"
 
-        # Prépare le statut des plugins pour la notification
-        registre_plugins = get_registre()
-        plugins_actifs = [n for n, info in registre_plugins.items() if info["actif"]]
-        plugins_en_erreur = [
-            n
-            for n, info in registre_plugins.items()
-            if not info["actif"] and info["erreur"]
-        ]
+            # Prépare le statut des plugins pour la notification
+            registre_plugins = get_registre()
+            plugins_actifs = [n for n, info in registre_plugins.items() if info["actif"]]
+            plugins_en_erreur = [
+                n
+                for n, info in registre_plugins.items()
+                if not info["actif"] and info["erreur"]
+            ]
 
-        if plugins_actifs:
-            statut_plugins = f"✅ {len(plugins_actifs)} chargé(s) : " + ", ".join(
-                plugins_actifs
-            )
-            if plugins_en_erreur:
-                statut_plugins += (
-                    f"<br>⚠️ {len(plugins_en_erreur)} en erreur : "
-                    + ", ".join(plugins_en_erreur)
+            if plugins_actifs:
+                statut_plugins = f"✅ {len(plugins_actifs)} chargé(s) : " + ", ".join(
+                    plugins_actifs
                 )
-        else:
-            dossier_plugins = os.path.join(DOSSIER_APP, "plugins")
-            fichiers_py = (
-                [
-                    f
-                    for f in os.listdir(dossier_plugins)
-                    if f.endswith(".py") and not f.startswith("__")
-                ]
-                if os.path.exists(dossier_plugins)
-                else []
-            )
-            if fichiers_py:
-                statut_plugins = f"❌ ÉCHEC ({len(fichiers_py)} fichier(s) présent(s) mais non chargés)"
+                if plugins_en_erreur:
+                    statut_plugins += (
+                        f"<br>⚠️ {len(plugins_en_erreur)} en erreur : "
+                        + ", ".join(plugins_en_erreur)
+                    )
             else:
-                statut_plugins = "ℹ️ Aucun plugin"
+                dossier_plugins_notif = os.path.join(DOSSIER_APP, "plugins")
+                fichiers_py_notif = (
+                    [
+                        f
+                        for f in os.listdir(dossier_plugins_notif)
+                        if f.endswith(".py") and not f.startswith("__")
+                    ]
+                    if os.path.exists(dossier_plugins_notif)
+                    else []
+                )
+                if fichiers_py_notif:
+                    statut_plugins = f"❌ ÉCHEC ({len(fichiers_py_notif)} fichier(s) présent(s) mais non chargés)"
+                else:
+                    statut_plugins = "ℹ️ Aucun plugin"
 
-        message_demarrage = (
-            f"🚀 **Superviseur de Dossiers - Démarré**<br><br>"
-            f"📅 **Date** : {datetime.now().strftime('%d/%m/%Y à %H:%M')}<br>"
-            f"⏱️ **Prochain scan** : {heure_scan}<br>"
-            f"🗄️ **Base de données** : {statut_bdd_emoji}<br>"
-            f"🔌 **Plugins** : {statut_plugins}<br>"
-            f"🌐 **Intranet** : {statut_intranet}<br><br>"
-            f"📁 **État des chemins racines** :<br>"
-        )
+            message_demarrage = (
+                f"🚀 **Superviseur de Dossiers - Démarré**<br><br>"
+                f"📅 **Date** : {datetime.now().strftime('%d/%m/%Y à %H:%M')}<br>"
+                f"⏱️ **Prochain scan** : {heure_scan}<br>"
+                f"🗄️ **Base de données** : {statut_bdd_emoji}<br>"
+                f"🔌 **Plugins** : {statut_plugins}<br>"
+                f"🌐 **Intranet** : {statut_intranet}<br><br>"
+                f"📁 **État des chemins racines** :<br>"
+            )
 
-        for p_statut in statuts_chemins:
-            emoji_path = "✅" if "(OK)" in p_statut else "❌"
-            path_name = p_statut.split(" (")[0]
-            message_demarrage += f"- `{path_name}` : {emoji_path}<br>"
+            for p_statut in statuts_chemins:
+                emoji_path = "✅" if "(OK)" in p_statut else "❌"
+                path_name = p_statut.split(" (")[0]
+                message_demarrage += f"- `{path_name}` : {emoji_path}<br>"
 
-        envoyer_notif_teams(message_demarrage)
+            envoyer_notif_teams(message_demarrage)
+
+        threading.Thread(target=_notif_demarrage, daemon=True).start()
 
         print("-" * 60)
         print("ℹ️ NOTE : Si vous avez configuré la tâche planifiée Windows,")
@@ -356,10 +414,45 @@ if __name__ == "__main__":
         print("=" * 60)
         print("Le programme est en cours d'execution... Ne fermez pas cette fenetre")
 
+
         # Boucle infinie pour que le programme continue de tourner
-        # En mode debug, le scheduler tourne déjà dans un thread séparé (lancer_ordonnanceur)
+        # En mode debug, le scheduler tourne déjà dans un thread séparé (executer_ordonnanceur)
         # donc on ne lance pas la boucle ici pour éviter un double scan.
         if not debug_mode:
+            env_path = os.path.join(DOSSIER_APP, ".env")
             while True:
                 schedule.run_pending()
+
+                try:
+                    dotenv.load_dotenv(env_path, override=True)
+                    h_env = os.getenv("HEURE_SCAN", "17:30")
+                    d_env = int(os.getenv("DELAI_VERIFICATION", 300))
+
+                    if h_env != heure_scan:
+                        print(f"⏰ Heure de scan modifiée : {heure_scan} → {h_env}")
+                        schedule.clear("daily_scan")
+                        schedule.every().day.at(h_env).do(scanner_en_thread).tag("daily_scan")
+                        heure_scan = h_env
+
+                        h_part, m_part = h_env.split(":")
+                        maintenant = datetime.now()
+                        heure_cible = maintenant.replace(
+                            hour=int(h_part), minute=int(m_part),
+                            second=0, microsecond=0
+                        )
+                        if maintenant >= heure_cible:
+                            print(
+                                f"⏳ {h_env} déjà passé — lancement du scan immédiat..."
+                            )
+                            scanner_en_thread()
+
+                    if d_env != delai_verification:
+                        print(
+                            f"⏱️ Délai mis à jour : {delai_verification}s → {d_env}s"
+                        )
+                        delai_verification = d_env
+
+                except Exception as e:
+                    print(f"⚠️ Erreur rechargement config : {e}")
+
                 time.sleep(delai_verification)
