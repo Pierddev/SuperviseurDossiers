@@ -256,58 +256,105 @@ def creer_app() -> Flask:
 
         if request.method == "POST":
 
+            # Vérification que le .env est accessible en écriture
+            # (en Docker, s'assurer que le volume n'est PAS monté en :ro)
+            if not os.access(env_file, os.W_OK):
+                flash(
+                    "Impossible d'écrire dans le fichier .env : "
+                    "vérifiez que le volume Docker n'est pas monté en lecture seule (:ro).",
+                    "error",
+                )
+                return redirect(url_for("settings"))
+
             def _save(key, val):
-                dotenv.set_key(env_file, key, val, quote_mode="never")
+                """
+                Écrit clé=valeur directement dans le .env (lecture → modif → écriture en place).
+                Évite le rename atomique de dotenv.set_key() qui échoue sur les fichiers
+                bind-mountés dans Docker Linux (EBUSY / inode verrouillé).
+                """
+                try:
+                    with open(env_file, "r", encoding="utf-8") as f:
+                        lines = f.readlines()
+                except FileNotFoundError:
+                    lines = []
+
+                key_found = False
+                new_lines = []
+                for line in lines:
+                    stripped = line.strip()
+                    # Ligne correspondant à la clé (avec ou sans espace autour du =)
+                    if stripped.startswith(f"{key}=") or stripped.startswith(f"{key} ="):
+                        new_lines.append(f"{key}={val}\n")
+                        key_found = True
+                    else:
+                        new_lines.append(line)
+
+                if not key_found:
+                    # Clé absente : on l'ajoute en fin de fichier
+                    new_lines.append(f"{key}={val}\n")
+
+                # Écriture directe en place (pas de fichier temporaire)
+                with open(env_file, "w", encoding="utf-8") as f:
+                    f.writelines(new_lines)
+
                 os.environ[key] = val
 
-            # --- Base de données ---
-            _save("DB_HOST", request.form.get("db_host", "localhost"))
-            _save("DB_PORT", request.form.get("db_port", "3306"))
-            _save("DB_USER", request.form.get("db_user", "root"))
-            _save("DB_NAME", request.form.get("db_name", "superviseur_dossiers"))
-            pwd = request.form.get("db_password", "")
-            if pwd:  # Ne remplace le mot de passe que s'il est renseigné
-                _save("DB_PASSWORD", pwd)
+            try:
+                # --- Base de données ---
+                _save("DB_HOST", request.form.get("db_host", "localhost"))
+                _save("DB_PORT", request.form.get("db_port", "3306"))
+                _save("DB_USER", request.form.get("db_user", "root"))
+                _save("DB_NAME", request.form.get("db_name", "superviseur_dossiers"))
+                pwd = request.form.get("db_password", "")
+                if pwd:  # Ne remplace le mot de passe que s'il est renseigné
+                    _save("DB_PASSWORD", pwd)
 
-            # --- Teams ---
-            _save("TEAMS_WEBHOOK_URL", request.form.get("teams_webhook", ""))
+                # --- Teams ---
+                _save("TEAMS_WEBHOOK_URL", request.form.get("teams_webhook", ""))
 
-            # --- Planning ---
-            _save("HEURE_SCAN", request.form.get("heure_scan", "17:30"))
-            _save("DELAI_VERIFICATION", request.form.get("delai_verification", "300"))
+                # --- Planning ---
+                _save("HEURE_SCAN", request.form.get("heure_scan", "17:30"))
+                _save("DELAI_VERIFICATION", request.form.get("delai_verification", "300"))
 
-            # --- Chemins racines (liste → CSV) ---
-            racines = [
-                c.strip()
-                for c in request.form.get("chemins_racines", "").split("\n")
-                if c.strip()
-            ]
-            _save("CHEMINS_RACINES", ",".join(racines))
+                # --- Chemins racines (liste → CSV) ---
+                racines = [
+                    c.strip()
+                    for c in request.form.get("chemins_racines", "").split("\n")
+                    if c.strip()
+                ]
+                _save("CHEMINS_RACINES", ",".join(racines))
 
-            # --- Chemins exclus (liste → CSV) ---
-            exclus = [
-                c.strip()
-                for c in request.form.get("chemins_exclus", "").split("\n")
-                if c.strip()
-            ]
-            _save("CHEMINS_EXCLUS", ",".join(exclus))
+                # --- Chemins exclus (liste → CSV) ---
+                exclus = [
+                    c.strip()
+                    for c in request.form.get("chemins_exclus", "").split("\n")
+                    if c.strip()
+                ]
+                _save("CHEMINS_EXCLUS", ",".join(exclus))
 
-            # --- Seuils ---
-            _save("SEUIL_DEFAUT", request.form.get("seuil_defaut", "100"))
+                # --- Seuils ---
+                _save("SEUIL_DEFAUT", request.form.get("seuil_defaut", "100"))
 
-            chemins_seuil = request.form.getlist("custom_path[]")
-            valeurs_seuil = request.form.getlist("custom_val[]")
-            seuils_valides = [
-                f"{c.strip()}={v.strip()}"
-                for c, v in zip(chemins_seuil, valeurs_seuil)
-                if c.strip() and v.strip()
-            ]
-            _save("SEUILS_PERSONNALISES", ",".join(seuils_valides))
+                chemins_seuil = request.form.getlist("custom_path[]")
+                valeurs_seuil = request.form.getlist("custom_val[]")
+                seuils_valides = [
+                    f"{c.strip()}={v.strip()}"
+                    for c, v in zip(chemins_seuil, valeurs_seuil)
+                    if c.strip() and v.strip()
+                ]
+                _save("SEUILS_PERSONNALISES", ",".join(seuils_valides))
 
-            # Horodatage de la dernière sauvegarde
-            _save("LAST_SAVED", datetime.now().strftime("%Y-%m-%d %H:%M"))
+                # Horodatage de la dernière sauvegarde
+                _save("LAST_SAVED", datetime.now().strftime("%Y-%m-%d %H:%M"))
 
-            flash("Configuration sauvegardée avec succès.", "success")
+                flash("Configuration sauvegardée avec succès.", "success")
+
+            except OSError as e:
+                flash(
+                    f"Erreur lors de la sauvegarde du fichier .env : {e}",
+                    "error",
+                )
+
             return redirect(url_for("settings"))
 
         # --- Lecture / préparation des données pour la vue ---
