@@ -186,6 +186,16 @@ class TestTerminerScan(unittest.TestCase):
             "Erreur lors de la terminaison du scan", mock_notif.call_args[0][0]
         )
 
+    def test_execute_update_statut_interrupted(self):
+        """Doit accepter le statut 'interrupted'."""
+        mock_connexion = MagicMock()
+        mock_curseur = MagicMock()
+        mock_connexion.cursor.return_value = mock_curseur
+
+        terminer_scan(mock_connexion, 1, "interrupted")
+        params = mock_curseur.execute.call_args[0][1]
+        self.assertEqual(params, ("interrupted", 1))
+
 
 class TestTraiterDossiersEnLot(unittest.TestCase):
     """Tests pour la fonction traiter_dossiers_en_lot."""
