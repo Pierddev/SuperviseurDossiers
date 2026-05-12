@@ -1,6 +1,8 @@
 -- ============================================================
--- Migration vers MariaDB avec historisation complète
--- SuperviseurDossiers — feature/intranet-historisation
+-- Script d'installation unique — SuperviseurDossiers
+-- ============================================================
+-- Exécuter une seule fois pour créer la base et les tables.
+-- Usage : mysql -u root -p < sql/setup.sql
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS superviseur_dossiers
@@ -9,17 +11,8 @@ CREATE DATABASE IF NOT EXISTS superviseur_dossiers
 USE superviseur_dossiers;
 
 -- ------------------------------------------------------------
--- 1. Suppression des anciennes tables (ordre important pour les FK)
+-- 1. Création des nouvelles tables
 -- ------------------------------------------------------------
-DROP TABLE IF EXISTS sudo_tailles;
-DROP TABLE IF EXISTS sudo_dossiers;
-DROP TABLE IF EXISTS sudo_scans;
-
-
--- ------------------------------------------------------------
--- 2. Création des nouvelles tables
--- ------------------------------------------------------------
-
 CREATE TABLE folders (
     id_folder  BIGINT       NOT NULL AUTO_INCREMENT,
     path       VARCHAR(512) NOT NULL,
@@ -43,18 +36,18 @@ CREATE TABLE scans (
 CREATE TABLE sizes (
     id_scan    BIGINT  NOT NULL,
     id_folder  BIGINT  NOT NULL,
-    size_kb    BIGINT  NOT NULL,   -- taille en Ko
+    size_kb    BIGINT  NOT NULL,
     PRIMARY KEY (id_scan, id_folder),
     FOREIGN KEY (id_scan)   REFERENCES scans(id_scan),
     FOREIGN KEY (id_folder) REFERENCES folders(id_folder)
 );
 
 -- ------------------------------------------------------------
--- 3. Index de performance
+-- 2. Index de performance
 -- ------------------------------------------------------------
-
--- Accélère la recherche du dernier scan réussi (utilisé par db.py)
-CREATE INDEX idx_scan_status_date ON scans(status, date_);
-
--- Accélère la récupération de l'historique complet d'un dossier (utilisé par l'Intranet)
-CREATE INDEX idx_sizes_id_folder ON sizes(id_folder);
+CREATE INDEX idx_scan_status_date     ON scans(status, date_);
+CREATE INDEX idx_sizes_id_folder      ON sizes(id_folder);
+CREATE INDEX idx_folders_is_deleted   ON folders(is_deleted);
+CREATE INDEX idx_folders_is_new       ON folders(is_new);
+CREATE INDEX idx_folders_deleted_path ON folders(is_deleted, path(100));
+CREATE INDEX idx_folders_new_path     ON folders(is_new, path(100));
