@@ -182,7 +182,7 @@
                 <div class="p-4 border-b border-gray-800 bg-gray-900">
                     <h3 id="table-title" class="text-sm font-semibold text-white">Historique détaillé</h3>
                 </div>
-                <div class="overflow-y-auto w-full">
+                <div class="overflow-y-auto w-full flex-1">
                     <table class="w-full text-left text-xs text-gray-400">
                         <thead class="bg-gray-800/80 backdrop-blur-sm text-gray-500 uppercase sticky top-0">
                             <tr>
@@ -195,6 +195,15 @@
                             <!-- JS Inject -->
                         </tbody>
                     </table>
+                </div>
+                <!-- Pagination -->
+                <div id="pagination-controls" class="hidden flex items-center justify-between px-6 py-3 border-t border-gray-800 bg-gray-900/50 flex-shrink-0">
+                    <span id="pagination-info" class="text-xs text-gray-500"></span>
+                    <div class="flex items-center gap-1">
+                        <button id="prev-page" class="px-3 py-1 text-xs font-medium rounded-md text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Précédent</button>
+                        <div id="page-numbers" class="flex items-center gap-1"></div>
+                        <button id="next-page" class="px-3 py-1 text-xs font-medium rounded-md text-gray-400 hover:text-white hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">Suivant</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -223,6 +232,9 @@ let activeItem = null;
 let currentFolderId = null;
 let currentFolderPath = null;
 let currentPeriode = "30";
+let currentPage = 1;
+const PER_PAGE = 15;
+let paginationMeta = null;
 
 // ── Clic sur un dossier ──────────────────────────────────────────────
 function handleFolderClick(el) {
@@ -320,15 +332,16 @@ function loadChildren(wrapEl, parentPath, depth) {
 
 
 // ── Graphique Chart.js ────────────────────────────────────────────────
-function loadChart(id, path) {
+function loadChart(id, path, page) {
     currentFolderId = id;
     currentFolderPath = path;
+    currentPage = page || 1;
 
     document.getElementById('placeholder').classList.add('hidden');
     document.getElementById('chart-container').classList.add('hidden');
     document.getElementById('chart-loader').classList.remove('hidden');
 
-    fetch('/api/historique/' + id + '?periode=' + currentPeriode)
+    fetch('/api/historique/' + id + '?periode=' + currentPeriode + '&page=' + currentPage + '&per_page=' + PER_PAGE)
         .then(r => r.json())
         .then(data => renderChart(data, path))
         .catch(() => {
@@ -451,6 +464,60 @@ function renderChart(data, path) {
     } else {
         tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Aucune donnée trouvée.</td></tr>';
     }
+
+    // Pagination
+    paginationMeta = data.pagination || null;
+    renderPagination();
+}
+
+// ── Pagination ─────────────────────────────────────────────────────
+function renderPagination() {
+    const controls = document.getElementById('pagination-controls');
+    const info = document.getElementById('pagination-info');
+    const prevBtn = document.getElementById('prev-page');
+    const nextBtn = document.getElementById('next-page');
+    const pageNumbers = document.getElementById('page-numbers');
+
+    if (!paginationMeta || paginationMeta.total_pages <= 1) {
+        controls.classList.add('hidden');
+        return;
+    }
+    controls.classList.remove('hidden');
+
+    const { current_page, total_pages, total_count, per_page } = paginationMeta;
+    const start = (current_page - 1) * per_page + 1;
+    const end = Math.min(current_page * per_page, total_count);
+
+    info.textContent = `Affichage de ${start}\u2013${end} sur ${total_count} entr\u00e9es`;
+
+    prevBtn.disabled = current_page <= 1;
+    nextBtn.disabled = current_page >= total_pages;
+    prevBtn.onclick = () => goToPage(current_page - 1);
+    nextBtn.onclick = () => goToPage(current_page + 1);
+
+    pageNumbers.innerHTML = '';
+    const maxVisible = 5;
+    let startPage = Math.max(1, current_page - Math.floor(maxVisible / 2));
+    let endPage = Math.min(total_pages, startPage + maxVisible - 1);
+    if (endPage - startPage + 1 < maxVisible) {
+        startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+    for (let i = startPage; i <= endPage; i++) {
+        const btn = document.createElement('button');
+        btn.className = `px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
+            i === current_page
+                ? 'bg-primary-600 text-white'
+                : 'text-gray-400 hover:text-white hover:bg-gray-700'
+        }`;
+        btn.textContent = i;
+        btn.onclick = () => goToPage(i);
+        pageNumbers.appendChild(btn);
+    }
+}
+
+function goToPage(page) {
+    if (page < 1 || (paginationMeta && page > paginationMeta.total_pages)) return;
+    loadChart(currentFolderId, currentFolderPath, page);
 }
 
 // Gestion du changement de filtre
@@ -467,8 +534,9 @@ document.querySelectorAll('.time-filter-btn').forEach(btn => {
         this.classList.add('bg-gray-700', 'text-white', 'shadow-sm');
 
         currentPeriode = this.dataset.value;
+        currentPage = 1;
         if (currentFolderId && currentFolderPath) {
-            loadChart(currentFolderId, currentFolderPath);
+            loadChart(currentFolderId, currentFolderPath, 1);
         }
     });
 });

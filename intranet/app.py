@@ -163,7 +163,9 @@ def creer_app() -> Flask:
         from intranet.queries import get_historique_dossier
 
         periode = req.args.get("periode", "30")
-        data = get_historique_dossier(id_folder, periode)
+        page = req.args.get("page", 1, type=int)
+        per_page = req.args.get("per_page", 15, type=int)
+        data = get_historique_dossier(id_folder, periode, page, per_page)
         return jsonify(data)
 
     @app.route("/api/recherche")
