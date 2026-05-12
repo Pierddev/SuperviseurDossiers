@@ -22,11 +22,14 @@ from db import (
 from fichiers import filtrer_dossiers_redondants, scanner_arborescence
 from notifications import envoyer_notif_teams
 
+SCAN_EN_COURS_ID: int | None = None
+
 
 def scanner() -> None:
     """
     Scanne tous les dossiers à partir des chemins racines définis dans .env.
     """
+    global SCAN_EN_COURS_ID
     connexion_mysql = None
     id_scan = None
     debut_scan = time.time()
@@ -37,6 +40,7 @@ def scanner() -> None:
         id_scan = creer_scan(connexion_mysql)
         if not id_scan:
             return
+        SCAN_EN_COURS_ID = id_scan
 
         # Parse les chemins racines séparés par des virgules
         chemins_racines = os.getenv("CHEMINS_RACINES", "").split(",")
@@ -176,6 +180,7 @@ def scanner() -> None:
             terminer_scan(connexion_mysql, id_scan, "failed")
 
     finally:
+        SCAN_EN_COURS_ID = None
         # Toujours se déconnecter de la BDD, même en cas d'erreur
         if connexion_mysql:
             deconnecter_base_de_donnees(connexion_mysql)

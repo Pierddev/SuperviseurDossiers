@@ -6,6 +6,7 @@ Script de surveillance de dossiers pour Windows Server.
 import argparse
 import logging
 import os
+import signal
 import sys
 import threading
 import time
@@ -91,6 +92,18 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    arret_demande = False
+
+    def _handler_arret(signum, frame):
+        """Signal handler pour SIGINT et SIGBREAK."""
+        global arret_demande
+        arret_demande = True
+        print("\n⏳ Arrêt demandé, fin de la boucle en cours...")
+
+    signal.signal(signal.SIGINT, _handler_arret)
+    if hasattr(signal, "SIGBREAK"):
+        signal.signal(signal.SIGBREAK, _handler_arret)
+
     # --- Vérification globale des chemins racines (exécuté pour tous les modes) ---
     chemins_racines_env = os.getenv("CHEMINS_RACINES", "").split(",")
     statuts_chemins = []
@@ -111,36 +124,52 @@ if __name__ == "__main__":
             chemins_manquants.append(chemin)
     print("=" * 60)
 
-    if args.scan_now:
-        # Mode scan immédiat
-        print("🔍 Superviseur de Dossiers - Scan manuel")
-        scanner()
-        print("✅ Scan terminé.")
-    elif args.run_plugin:
-        # Mode exécution de plugin manuel
-        print(f"🔌 Exécution manuelle du plugin : {args.run_plugin}")
-        plugins = charger_plugins(DOSSIER_APP)
-        plugin_trouve = False
-        for plugin in plugins:
-            if plugin.__name__ == args.run_plugin:
-                plugin_trouve = True
-                if hasattr(plugin, "executer"):
-                    plugin.executer()
-                else:
-                    print(
-                        f"❌ Le plugin '{args.run_plugin}' ne possède pas de fonction 'executer()'."
-                    )
-                break
+    # Nettoyage des scans orphelins laissés par un arrêt brutal précédent
+    try:
+        _conn = connecter_base_de_donnees()
+        if _conn:
+            _cur = _conn.cursor()
+            _cur.execute(
+                "UPDATE scans SET status = 'interrupted', date_end = NOW() "
+                "WHERE status = 'in_progress'"
+            )
+            _conn.commit()
+            _cur.close()
+            deconnecter_base_de_donnees(_conn)
+    except Exception:
+        pass
 
-        if not plugin_trouve:
-            print(f"❌ Plugin introuvable : {args.run_plugin}")
-            print("Plugins disponibles :")
-            for p in plugins:
-                print(f" - {p.__name__}")
-        print("✅ Terminé.")
-    else:
-        # Mode planifié (comportement par défaut)
-        heure_scan = os.getenv("HEURE_SCAN", "17:30")
+    try:
+        if args.scan_now:
+            # Mode scan immédiat
+            print("🔍 Superviseur de Dossiers - Scan manuel")
+            scanner()
+            print("✅ Scan terminé.")
+        elif args.run_plugin:
+            # Mode exécution de plugin manuel
+            print(f"🔌 Exécution manuelle du plugin : {args.run_plugin}")
+            plugins = charger_plugins(DOSSIER_APP)
+            plugin_trouve = False
+            for plugin in plugins:
+                if plugin.__name__ == args.run_plugin:
+                    plugin_trouve = True
+                    if hasattr(plugin, "executer"):
+                        plugin.executer()
+                    else:
+                        print(
+                            f"❌ Le plugin '{args.run_plugin}' ne possède pas de fonction 'executer()'."
+                        )
+                    break
+
+            if not plugin_trouve:
+                print(f"❌ Plugin introuvable : {args.run_plugin}")
+                print("Plugins disponibles :")
+                for p in plugins:
+                    print(f" - {p.__name__}")
+            print("✅ Terminé.")
+        else:
+            # Mode planifié (comportement par défaut)
+            heure_scan = os.getenv("HEURE_SCAN", "17:30")
 
         def scanner_en_thread():
             """Lance le scan dans un thread daemon pour ne pas bloquer la boucle principale."""
@@ -420,7 +449,7 @@ if __name__ == "__main__":
         # donc on ne lance pas la boucle ici pour éviter un double scan.
         if not debug_mode:
             env_path = os.path.join(DOSSIER_APP, ".env")
-            while True:
+            while not arret_demande:
                 schedule.run_pending()
 
                 try:
@@ -456,3 +485,21 @@ if __name__ == "__main__":
                     print(f"⚠️ Erreur rechargement config : {e}")
 
                 time.sleep(delai_verification)
+
+    except KeyboardInterrupt:
+        print("\n⏳ Arrêt demandé...")
+    finally:
+        # Nettoyage des scans laissés en in_progress
+        try:
+            _conn = connecter_base_de_donnees()
+            if _conn:
+                _cur = _conn.cursor()
+                _cur.execute(
+                    "UPDATE scans SET status = 'interrupted', date_end = NOW() "
+                    "WHERE status = 'in_progress'"
+                )
+                _conn.commit()
+                _cur.close()
+                deconnecter_base_de_donnees(_conn)
+        except Exception:
+            pass

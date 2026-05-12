@@ -32,7 +32,7 @@
 | `id_scan`  | `BIGINT` (PK) | Identifiant unique du scan                                         |
 | `date_`    | `TIMESTAMP`   | Date et heure de **début** du scan (UTC)                           |
 | `date_end` | `TIMESTAMP`   | Date et heure de **fin** du scan (NULL tant que le scan tourne)    |
-| `status`   | `VARCHAR(20)` | Statut : `in_progress`, `completed`, `failed`                      |
+| `status`   | `VARCHAR(20)` | Statut : `in_progress`, `completed`, `failed`, `interrupted`       |
 
 #### `sizes`
 

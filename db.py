@@ -119,7 +119,7 @@ def terminer_scan(
 ) -> None:
     """
     Termine un scan en mettant à jour son statut dans la table scans.
-    Statuts possibles : 'completed', 'failed'.
+    Statuts possibles : 'completed', 'failed', 'interrupted'.
     """
     try:
         curseur = connexion_mysql.cursor()

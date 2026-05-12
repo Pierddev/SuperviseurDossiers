@@ -47,15 +47,18 @@
                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium
                                 {% if status == 'completed' %}bg-green-900/40 text-green-300 border border-green-800/50
                                 {% elif status == 'in_progress' %}bg-yellow-900/40 text-yellow-300 border border-yellow-800/50
+                                {% elif status == 'interrupted' %}bg-gray-800/50 text-gray-400 border border-gray-700
                                 {% else %}bg-red-900/40 text-red-300 border border-red-800/50
                                 {% endif %}">
                                 <span class="w-1.5 h-1.5 rounded-full
                                     {% if status == 'completed' %}bg-green-400
                                     {% elif status == 'in_progress' %}bg-yellow-400 animate-pulse
+                                    {% elif status == 'interrupted' %}bg-gray-500
                                     {% else %}bg-red-400
                                     {% endif %}"></span>
                                 {% if status == 'completed' %}Terminé
                                 {% elif status == 'in_progress' %}En cours
+                                {% elif status == 'interrupted' %}Interrompu
                                 {% else %}Échec
                                 {% endif %}
                             </span>
