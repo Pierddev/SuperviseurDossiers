@@ -1,0 +1,344 @@
+{% extends "layout.html" %}
+
+{% block title %}Configuration — SuperviseurDossiers{% endblock %}
+
+{% block content %}
+
+<!-- Bandeau avertissement modifications non sauvegardées (caché par défaut) -->
+<div id="unsaved-banner" class="hidden fixed top-0 left-72 right-0 z-50 flex items-center gap-3 px-6 py-3 bg-amber-500/10 border-b border-amber-500/30 text-amber-400 backdrop-blur-md">
+    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+    </svg>
+    <span class="text-sm font-medium">Des modifications n'ont pas encore été sauvegardées.</span>
+</div>
+
+<div class="max-w-5xl mx-auto px-8 pt-12 pb-28">
+    <div class="mb-8">
+        <h1 class="text-2xl font-bold text-white">Configuration</h1>
+        <p class="text-sm text-gray-400 mt-1">Gérez les paramètres de l'application et les variables d'environnement</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('settings') }}" id="settings-form" class="space-y-5">
+
+        <!-- ═══════════ Section : Base de données ═══════════ -->
+        <div class="config-section bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <div class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-800/30 transition-colors cursor-pointer section-toggle">
+                <div class="flex items-center gap-3">
+                    <svg class="w-4 h-4 text-primary-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1.5 3 3.5 3s3.5-1 3.5-3V7c0-2-1.5-3-3.5-3S4 5 4 7zm9 0v10c0 2 1.5 3 3.5 3s3.5-1 3.5-3V7c0-2-1.5-3-3.5-3S13 5 13 7z"/>
+                    </svg>
+                    <span class="text-sm font-semibold text-white">Base de données</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button type="button" id="btn-test-db"
+                            class="test-conn-btn text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:border-primary-500 hover:text-primary-300 transition-all flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        Tester la connexion
+                    </button>
+                    <svg class="chevron-icon w-4 h-4 text-gray-500 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </div>
+            </div>
+            <div id="test-db-msg" class="hidden px-6 pb-3 text-xs font-medium"></div>
+            <div class="section-body px-6 pb-6 border-t border-gray-800">
+                <div class="grid grid-cols-2 gap-4 mt-5">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1.5">Hôte DB</label>
+                        <input type="text" name="db_host" id="db_host" value="{{ db_host }}"
+                               class="config-input w-full bg-gray-800/60 border border-gray-700 rounded-lg text-gray-200 text-sm py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1.5">Port DB</label>
+                        <input type="number" name="db_port" id="db_port" value="{{ db_port }}"
+                               class="config-input w-full bg-gray-800/60 border border-gray-700 rounded-lg text-gray-200 text-sm py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1.5">Utilisateur DB</label>
+                        <input type="text" name="db_user" id="db_user" value="{{ db_user }}"
+                               class="config-input w-full bg-gray-800/60 border border-gray-700 rounded-lg text-gray-200 text-sm py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1.5">Mot de passe DB</label>
+                        <div class="relative">
+                            <input type="password" name="db_password" id="db_password" placeholder="Laisser vide pour ne pas changer"
+                                   class="config-input w-full bg-gray-800/60 border border-gray-700 rounded-lg text-gray-200 text-sm py-2.5 px-3 pr-10 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                            <button type="button" class="toggle-pwd absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-span-2">
+                        <label class="block text-xs text-gray-500 mb-1.5">Nom de la base</label>
+                        <input type="text" name="db_name" id="db_name" value="{{ db_name }}"
+                               class="config-input w-full bg-gray-800/60 border border-gray-700 rounded-lg text-gray-200 text-sm py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════ Section : Microsoft Teams ═══════════ -->
+        <div class="config-section bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <div class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-800/30 transition-colors cursor-pointer section-toggle">
+                <div class="flex items-center gap-3">
+                    <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                    </svg>
+                    <span class="text-sm font-semibold text-white">Notifications Microsoft Teams</span>
+                </div>
+                <svg class="chevron-icon w-4 h-4 text-gray-500 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-body px-6 pb-6 border-t border-gray-800">
+                <div class="mt-5">
+                    <label class="block text-xs text-gray-500 mb-1.5">URL du Webhook Teams</label>
+                    <div class="relative">
+                        <input type="password" name="teams_webhook" id="teams_webhook" value="{{ teams_webhook }}"
+                               class="config-input w-full bg-gray-800/60 border border-gray-700 rounded-lg text-gray-200 text-sm py-2.5 px-3 pr-10 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 font-mono transition-all">
+                        <button type="button" class="toggle-pwd absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="mt-3">
+                        <button type="button" id="btn-test-teams"
+                                class="text-xs font-medium px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-300 hover:border-primary-500 hover:text-primary-300 transition-all flex items-center gap-1.5">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Test connection
+                        </button>
+                        <p id="test-teams-msg" class="hidden text-xs font-medium mt-2"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════ Section : Planification du scan ═══════════ -->
+        <div class="config-section bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <div class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-800/30 transition-colors cursor-pointer section-toggle">
+                <div class="flex items-center gap-3">
+                    <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span class="text-sm font-semibold text-white">Planification du scan</span>
+                </div>
+                <svg class="chevron-icon w-4 h-4 text-gray-500 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-body px-6 pb-6 border-t border-gray-800">
+                <div class="grid grid-cols-2 gap-4 mt-5">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1.5">Heure du scan quotidien (HH:MM)</label>
+                        <input type="time" name="heure_scan" value="{{ heure_scan }}"
+                               class="config-input w-full bg-gray-800/60 border border-gray-700 rounded-lg text-gray-200 text-sm py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1.5">Intervalle de vérification (secondes)</label>
+                        <input type="number" name="delai_verification" value="{{ delai_verification }}" min="1" id="delai-input"
+                               class="config-input w-full bg-gray-800/60 border border-gray-700 rounded-lg text-gray-200 text-sm py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                        <p class="text-xs text-gray-600 mt-1" id="delai-equiv"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════ Section : Monitored Paths ═══════════ -->
+        <div class="config-section bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <div class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-800/30 transition-colors cursor-pointer section-toggle">
+                <div class="flex items-center gap-3">
+                    <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                    </svg>
+                    <span class="text-sm font-semibold text-white">Chemins surveillés</span>
+                </div>
+                <svg class="chevron-icon w-4 h-4 text-gray-500 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-body px-6 pb-6 border-t border-gray-800">
+                <p class="text-xs text-gray-500 mt-4 mb-3">Chemins racines qui seront surveillés pour les changements de taille</p>
+                <!-- Tags + input -->
+                <div id="racines-tags" class="flex flex-wrap gap-2 mb-3">
+                    {% for r in chemins_racines %}
+                    <span class="path-tag flex items-center gap-1.5 bg-primary-900/40 border border-primary-800/60 text-primary-300 text-xs font-mono px-2.5 py-1 rounded-lg">
+                        {{ r }}
+                        <button type="button" class="remove-tag text-primary-500 hover:text-red-400 transition-colors" data-target="racines">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </span>
+                    {% endfor %}
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="racines-input" placeholder="Ajouter un chemin (ex: D:\ ou \\\\SERVEUR\\Partage)"
+                           class="flex-1 bg-gray-800/60 border border-gray-700 rounded-lg text-gray-200 text-sm py-2 px-3 font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                    <button type="button" onclick="addTag('racines')"
+                            class="px-4 py-2 bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg hover:border-primary-500 hover:text-primary-300 transition-all">
+                        Ajouter
+                    </button>
+                </div>
+                <!-- Champ caché pour la soumission du form -->
+                <textarea name="chemins_racines" id="racines-hidden" class="hidden">{{ chemins_racines | join('\n') }}</textarea>
+            </div>
+        </div>
+
+        <!-- ═══════════ Section : Excluded Paths ═══════════ -->
+        <div class="config-section bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <div class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-800/30 transition-colors cursor-pointer section-toggle">
+                <div class="flex items-center gap-3">
+                    <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+                    </svg>
+                    <span class="text-sm font-semibold text-white">Chemins exclus</span>
+                </div>
+                <svg class="chevron-icon w-4 h-4 text-gray-500 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-body px-6 pb-6 border-t border-gray-800">
+                <p class="text-xs text-gray-500 mt-4 mb-3">Chemins qui seront exclus de la surveillance et des alertes</p>
+                <div id="exclus-tags" class="flex flex-wrap gap-2 mb-3">
+                    {% for e in chemins_exclus %}
+                    <span class="path-tag flex items-center gap-1.5 bg-red-900/30 border border-red-800/50 text-red-300 text-xs font-mono px-2.5 py-1 rounded-lg">
+                        {{ e }}
+                        <button type="button" class="remove-tag text-red-500 hover:text-red-300 transition-colors" data-target="exclus">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </span>
+                    {% endfor %}
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" id="exclus-input" placeholder="Ajouter un chemin exclu"
+                           class="flex-1 bg-gray-800/60 border border-gray-700 rounded-lg text-gray-200 text-sm py-2 px-3 font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                    <button type="button" onclick="addTag('exclus')"
+                            class="px-4 py-2 bg-gray-800 border border-gray-700 text-gray-300 text-sm rounded-lg hover:border-primary-500 hover:text-primary-300 transition-all">
+                        Ajouter
+                    </button>
+                </div>
+                <textarea name="chemins_exclus" id="exclus-hidden" class="hidden">{{ chemins_exclus | join('\n') }}</textarea>
+            </div>
+        </div>
+
+        <!-- ═══════════ Section : Alert Thresholds ═══════════ -->
+        <div class="config-section bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+            <div class="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-800/30 transition-colors cursor-pointer section-toggle">
+                <div class="flex items-center gap-3">
+                    <svg class="w-4 h-4 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <span class="text-sm font-semibold text-white">Seuils d'alerte</span>
+                </div>
+                <svg class="chevron-icon w-4 h-4 text-gray-500 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                </svg>
+            </div>
+            <div class="section-body px-6 pb-6 border-t border-gray-800">
+                <!-- Seuil par défaut -->
+                <div class="mt-5 mb-6">
+                    <label class="block text-xs text-gray-500 mb-1.5">Seuil par défaut</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" name="seuil_defaut" value="{{ seuil_defaut }}" min="1"
+                               class="config-input w-32 bg-gray-800/60 border border-gray-700 rounded-lg text-gray-200 text-sm py-2.5 px-3 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all">
+                        <span class="text-sm text-gray-500">MB</span>
+                    </div>
+                </div>
+
+                <!-- Seuils personnalisés -->
+                <div>
+                    <p class="text-xs text-gray-500 mb-3">Seuils personnalisés</p>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-xs text-gray-500 border-b border-gray-800">
+                                <th class="pb-2 font-medium">Chemin</th>
+                                <th class="pb-2 font-medium w-44">Seuil (Mo)</th>
+                                <th class="pb-2 w-12"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="seuils-tbody" class="divide-y divide-gray-800/50">
+                            {% for s in seuils_perso %}
+                            <tr class="seuil-row">
+                                <td class="py-2 pr-4">
+                                    <input type="text" name="custom_path[]" value="{{ s.path }}"
+                                           class="config-input w-full bg-gray-800/60 border border-gray-700 rounded-lg text-gray-200 text-xs py-2 px-3 font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 transition-all">
+                                </td>
+                                <td class="py-2 pr-4">
+                                    <input type="number" name="custom_val[]" value="{{ s.val }}" min="1"
+                                           class="config-input w-full bg-gray-800/60 border border-gray-700 rounded-lg text-gray-200 text-xs py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary-500 transition-all">
+                                </td>
+                                <td class="py-2">
+                                    <button type="button" onclick="this.closest('.seuil-row').remove(); markDirty();"
+                                            class="p-1.5 text-gray-600 hover:text-red-400 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            <!-- Ligne vide pour ajouter -->
+                            <tr id="new-seuil-row">
+                                <td class="py-2 pr-4">
+                                    <input type="text" id="new-seuil-path" placeholder="Chemin..."
+                                           class="w-full bg-gray-800/60 border border-gray-700 rounded-lg text-gray-400 text-xs py-2 px-3 font-mono focus:outline-none focus:ring-1 focus:ring-primary-500 transition-all">
+                                </td>
+                                <td class="py-2 pr-4">
+                                    <input type="number" id="new-seuil-val" min="1" placeholder="Seuil..."
+                                           class="w-full bg-gray-800/60 border border-gray-700 rounded-lg text-gray-400 text-xs py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary-500 transition-all">
+                                </td>
+                                <td class="py-2">
+                                    <button type="button" onclick="addThresholdRow()"
+                                            class="px-3 py-1.5 bg-primary-900/40 border border-primary-800/50 text-primary-300 text-xs rounded-lg hover:bg-primary-900/60 transition-all">
+                                        Add
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </form>
+</div>
+
+<!-- ═══════════ Barre de bas de page ═══════════ -->
+<div id="footerSettingsBar" class="fixed bottom-0 left-72 right-0 bg-gray-900/95 backdrop-blur border-t border-gray-800 px-8 py-3 flex items-center justify-between z-40">
+    <p class="text-xs text-gray-500">
+        Dernière sauvegarde : <span class="text-gray-400">{{ last_saved }}</span>
+    </p>
+    <div class="flex items-center gap-3">
+        <button type="button" id="btn-reset"
+                class="flex items-center gap-2 text-sm text-red-400 hover:text-red-300 transition-colors px-3 py-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Réinitialiser par défaut
+        </button>
+        <button type="submit" form="settings-form"
+                class="flex items-center gap-2 bg-primary-600 hover:bg-primary-700 text-white text-sm font-medium px-5 py-2 rounded-lg shadow-lg shadow-primary-600/20 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+            </svg>
+            Enregistrer la configuration
+        </button>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}

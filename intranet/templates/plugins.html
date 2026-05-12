@@ -1,0 +1,541 @@
+{% extends "layout.html" %}
+
+{% block title %}Plugins — SuperviseurDossiers{% endblock %}
+
+{% block head %}
+<style>
+    /* Toggle switch */
+    .toggle-switch {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        cursor: pointer;
+        user-select: none;
+    }
+    .toggle-switch input {
+        position: absolute;
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .toggle-track {
+        width: 44px;
+        height: 24px;
+        background: #374151;
+        border-radius: 9999px;
+        transition: background 0.25s ease;
+        position: relative;
+        flex-shrink: 0;
+    }
+    .toggle-thumb {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        background: #9ca3af;
+        border-radius: 50%;
+        transition: transform 0.25s ease, background 0.25s ease;
+    }
+    .toggle-switch input:checked + .toggle-track {
+        background: #4f46e5;
+    }
+    .toggle-switch input:checked + .toggle-track .toggle-thumb {
+        transform: translateX(20px);
+        background: #fff;
+    }
+    .toggle-switch.is-error input:checked + .toggle-track {
+        background: #dc2626;
+    }
+    .toggle-switch.is-loading .toggle-track {
+        opacity: 0.5;
+        pointer-events: none;
+    }
+
+    /* Plugin card */
+    .plugin-card {
+        background: rgba(17, 24, 39, 0.7);
+        border: 1px solid rgba(75, 85, 99, 0.5);
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .plugin-card:hover {
+        border-color: rgba(99, 102, 241, 0.4);
+        box-shadow: 0 4px 24px rgba(79, 70, 229, 0.08);
+    }
+    .plugin-card.is-active {
+        border-color: rgba(79, 70, 229, 0.4);
+    }
+    .plugin-card.is-error {
+        border-color: rgba(220, 38, 38, 0.4);
+    }
+    .plugin-card.is-disabled {
+        border-color: rgba(75, 85, 99, 0.3);
+        opacity: 0.7;
+    }
+
+    /* Status badge */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.2rem 0.65rem;
+        border-radius: 9999px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .badge-active   { background: rgba(16,185,129,.15); color: #34d399; }
+    .badge-disabled { background: rgba(107,114,128,.15); color: #9ca3af; }
+    .badge-error    { background: rgba(220, 38, 38,.15); color: #f87171; }
+
+    /* Error block */
+    .error-block {
+        background: rgba(127,29,29,.25);
+        border: 1px solid rgba(220,38,38,.3);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.72rem;
+        color: #fca5a5;
+        white-space: pre-wrap;
+        word-break: break-all;
+        max-height: 180px;
+        overflow-y: auto;
+        display: none;
+    }
+    .error-block.visible { display: block; }
+
+    /* Reload button */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinning { animation: spin 0.8s linear infinite; }
+
+    /* Empty state */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        padding: 4rem 2rem;
+        text-align: center;
+    }
+
+    /* Toast */
+    #toast-container {
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        z-index: 9999;
+    }
+    .toast {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        padding: 0.75rem 1.25rem;
+        border-radius: 10px;
+        font-size: 0.82rem;
+        font-weight: 500;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        animation: slideIn 0.25s ease;
+        max-width: 340px;
+    }
+    .toast-success { background: #064e3b; color: #6ee7b7; border: 1px solid #065f46; }
+    .toast-error   { background: #7f1d1d; color: #fca5a5; border: 1px solid #991b1b; }
+    .toast-info    { background: #1e1b4b; color: #a5b4fc; border: 1px solid #312e81; }
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="p-6 space-y-6">
+
+    <!-- En-tête -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-semibold text-white">Plugins</h2>
+            <p class="text-sm text-gray-400 mt-1">Gérez les plugins installés dans le dossier <code class="text-primary-300 bg-primary-950/40 rounded px-1">/plugins</code></p>
+        </div>
+        <button id="btn-reload"
+                onclick="rechargerPlugins()"
+                class="flex items-center gap-2 bg-primary-700 hover:bg-primary-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-all">
+            <svg id="reload-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Recharger
+        </button>
+    </div>
+
+    <!-- Compteurs -->
+    <div class="grid grid-cols-3 gap-4" id="stats-row">
+        <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-primary-900/50 flex items-center justify-center">
+                <svg class="w-5 h-5 text-primary-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500 uppercase tracking-wide">Total</p>
+                <p class="text-xl font-semibold text-white" id="stat-total">{{ registre | length }}</p>
+            </div>
+        </div>
+        <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-emerald-900/40 flex items-center justify-center">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500 uppercase tracking-wide">Actifs</p>
+                <p class="text-xl font-semibold text-white" id="stat-active">{{ registre.values() | selectattr('actif') | list | length }}</p>
+            </div>
+        </div>
+        <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4 flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-red-900/40 flex items-center justify-center">
+                <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="text-xs text-gray-500 uppercase tracking-wide">En erreur</p>
+                <p class="text-xl font-semibold text-white" id="stat-error">{{ registre.values() | selectattr('erreur') | list | length }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liste des plugins -->
+    <div id="plugins-list" class="space-y-3">
+
+        {% if registre %}
+            {% for nom, info in registre.items() %}
+            <div class="plugin-card {% if info.actif %}is-active{% elif info.erreur %}is-error{% else %}is-disabled{% endif %}"
+                 id="card-{{ nom }}">
+                <div class="flex items-start justify-between gap-4">
+
+                    <!-- Icône + Infos -->
+                    <div class="flex items-start gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5
+                            {% if info.actif %}bg-primary-900/60{% elif info.erreur %}bg-red-900/40{% else %}bg-gray-800{% endif %}">
+                            <svg class="w-5 h-5 {% if info.actif %}text-primary-400{% elif info.erreur %}text-red-400{% else %}text-gray-500{% endif %}"
+                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/>
+                            </svg>
+                        </div>
+
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-semibold text-white font-mono text-sm">{{ nom }}</span>
+                                <span class="badge {% if info.actif %}badge-active{% elif info.erreur %}badge-error{% else %}badge-disabled{% endif %}"
+                                      id="badge-{{ nom }}">
+                                    <span class="w-1.5 h-1.5 rounded-full inline-block
+                                        {% if info.actif %}bg-emerald-400{% elif info.erreur %}bg-red-400{% else %}bg-gray-500{% endif %}">
+                                    </span>
+                                    {% if info.actif %}Actif{% elif info.erreur %}Erreur{% else %}Désactivé{% endif %}
+                                </span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-0.5 truncate">{{ info.chemin }}</p>
+
+                            {% if info.erreur %}
+                            <button onclick="toggleError('{{ nom }}')"
+                                    class="mt-2 text-xs text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Voir l'erreur
+                            </button>
+                            <div class="error-block mt-2" id="error-{{ nom }}">{{ info.erreur }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Toggle -->
+                    <label class="toggle-switch mt-1 flex-shrink-0 {% if info.erreur %}is-error{% endif %}"
+                           id="toggle-label-{{ nom }}"
+                           title="{% if info.actif %}Désactiver{% else %}Activer{% endif %} {{ nom }}">
+                        <input type="checkbox"
+                               id="toggle-{{ nom }}"
+                               {% if info.actif %}checked{% endif %}
+                               onchange="togglePlugin('{{ nom }}', this.checked)">
+                        <span class="toggle-track">
+                            <span class="toggle-thumb"></span>
+                        </span>
+                    </label>
+
+                </div>
+            </div>
+            {% endfor %}
+
+        {% else %}
+            <div class="plugin-card">
+                <div class="empty-state">
+                    <div class="w-16 h-16 rounded-2xl bg-gray-800 flex items-center justify-center">
+                        <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                  d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-gray-300 font-medium">Aucun plugin trouvé</p>
+                        <p class="text-gray-500 text-sm mt-1">
+                            Déposez vos fichiers <code class="text-primary-300">.py</code> dans le dossier
+                            <code class="text-primary-300">/plugins</code> puis rechargez.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // ─────────────────────────────────────────────
+    // Utilitaires
+    // ─────────────────────────────────────────────
+    function showToast(message, type = 'info') {
+        const icons = {
+            success: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>',
+            error:   '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>',
+            info:    '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+        };
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+        el.className = `toast toast-${type}`;
+        el.innerHTML = `
+            <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">${icons[type]}</svg>
+            <span>${message}</span>`;
+        container.appendChild(el);
+        setTimeout(() => el.remove(), 3500);
+    }
+
+    function toggleError(nom) {
+        const el = document.getElementById('error-' + nom);
+        el.classList.toggle('visible');
+    }
+
+    // ─────────────────────────────────────────────
+    // Activer / Désactiver un plugin
+    // ─────────────────────────────────────────────
+    async function togglePlugin(nom, activer) {
+        const label = document.getElementById('toggle-label-' + nom);
+        const toggle = document.getElementById('toggle-' + nom);
+        label.classList.add('is-loading');
+
+        const action = activer ? 'activer' : 'desactiver';
+        try {
+            const resp = await fetch(`/api/plugins/${encodeURIComponent(nom)}/${action}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            const data = await resp.json();
+
+            if (data.ok) {
+                appliquierEtatCarte(nom, activer ? 'active' : 'disabled', null);
+                showToast(
+                    activer ? `Plugin "${nom}" activé.` : `Plugin "${nom}" désactivé.`,
+                    activer ? 'success' : 'info'
+                );
+            } else {
+                // Échec de l'activation : on remet le toggle dans son état précédent et on affiche l'erreur
+                toggle.checked = !activer;
+                appliquierEtatCarte(nom, 'error', data.erreur);
+                showToast(`Erreur : ${data.erreur || 'Échec du chargement'}`, 'error');
+            }
+        } catch (e) {
+            toggle.checked = !activer;
+            showToast('Erreur réseau lors de la mise à jour du plugin.', 'error');
+        } finally {
+            label.classList.remove('is-loading');
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // Recharger tous les plugins depuis le disque
+    // ─────────────────────────────────────────────
+    async function rechargerPlugins() {
+        const icon = document.getElementById('reload-icon');
+        const btn  = document.getElementById('btn-reload');
+        icon.classList.add('spinning');
+        btn.disabled = true;
+
+        try {
+            const resp = await fetch('/api/plugins/recharger', { method: 'POST' });
+            const data = await resp.json();
+
+            if (data.ok) {
+                reconstruireListePlugins(data.registre);
+                mettreAjourStats(data.registre);
+                showToast('Liste des plugins rechargée.', 'success');
+            } else {
+                showToast('Erreur lors du rechargement.', 'error');
+            }
+        } catch (e) {
+            showToast('Erreur réseau lors du rechargement.', 'error');
+        } finally {
+            icon.classList.remove('spinning');
+            btn.disabled = false;
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // Reconstruction DOM après rechargement
+    // ─────────────────────────────────────────────
+    function reconstruireListePlugins(registre) {
+        const liste = document.getElementById('plugins-list');
+        const noms = Object.keys(registre);
+
+        if (noms.length === 0) {
+            liste.innerHTML = `
+                <div class="plugin-card">
+                    <div class="empty-state">
+                        <div class="w-16 h-16 rounded-2xl bg-gray-800 flex items-center justify-center">
+                            <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                      d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-gray-300 font-medium">Aucun plugin trouvé</p>
+                            <p class="text-gray-500 text-sm mt-1">
+                                Déposez vos fichiers <code class="text-primary-300">.py</code> dans le dossier
+                                <code class="text-primary-300">/plugins</code> puis rechargez.
+                            </p>
+                        </div>
+                    </div>
+                </div>`;
+            return;
+        }
+
+        // Construction des cartes
+        let html = '';
+        for (const [nom, info] of Object.entries(registre)) {
+            const etatClasse = info.actif ? 'is-active' : (info.erreur ? 'is-error' : 'is-disabled');
+            const iconColor  = info.actif ? 'text-primary-400' : (info.erreur ? 'text-red-400' : 'text-gray-500');
+            const iconBg     = info.actif ? 'bg-primary-900/60' : (info.erreur ? 'bg-red-900/40' : 'bg-gray-800');
+            const badgeClass = info.actif ? 'badge-active' : (info.erreur ? 'badge-error' : 'badge-disabled');
+            const dotClass   = info.actif ? 'bg-emerald-400' : (info.erreur ? 'bg-red-400' : 'bg-gray-500');
+            const label      = info.actif ? 'Actif' : (info.erreur ? 'Erreur' : 'Désactivé');
+
+            const errBlock = info.erreur ? `
+                <button onclick="toggleError('${nom}')"
+                        class="mt-2 text-xs text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Voir l'erreur
+                </button>
+                <div class="error-block mt-2" id="error-${nom}">${escapeHtml(info.erreur)}</div>` : '';
+
+            html += `
+            <div class="plugin-card ${etatClasse}" id="card-${nom}">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex items-start gap-3 min-w-0">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5 ${iconBg}">
+                            <svg class="w-5 h-5 ${iconColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"/>
+                            </svg>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-semibold text-white font-mono text-sm">${escapeHtml(nom)}</span>
+                                <span class="badge ${badgeClass}" id="badge-${nom}">
+                                    <span class="w-1.5 h-1.5 rounded-full inline-block ${dotClass}"></span>
+                                    ${label}
+                                </span>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-0.5 truncate">${escapeHtml(info.chemin)}</p>
+                            ${errBlock}
+                        </div>
+                    </div>
+                    <label class="toggle-switch mt-1 flex-shrink-0 ${info.erreur ? 'is-error' : ''}"
+                           id="toggle-label-${nom}"
+                           title="${info.actif ? 'Désactiver' : 'Activer'} ${escapeHtml(nom)}">
+                        <input type="checkbox" id="toggle-${nom}"
+                               ${info.actif ? 'checked' : ''}
+                               onchange="togglePlugin('${nom}', this.checked)">
+                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    </label>
+                </div>
+            </div>`;
+        }
+        liste.innerHTML = html;
+    }
+
+    function mettreAjourStats(registre) {
+        const valeurs = Object.values(registre);
+        document.getElementById('stat-total').textContent  = valeurs.length;
+        document.getElementById('stat-active').textContent = valeurs.filter(v => v.actif).length;
+        document.getElementById('stat-error').textContent  = valeurs.filter(v => v.erreur).length;
+    }
+
+    function appliquierEtatCarte(nom, etat, erreur) {
+        const card  = document.getElementById('card-' + nom);
+        const badge = document.getElementById('badge-' + nom);
+        if (!card || !badge) return;
+
+        // Reset classes carte
+        card.classList.remove('is-active', 'is-error', 'is-disabled');
+        if (etat === 'active')   card.classList.add('is-active');
+        if (etat === 'error')    card.classList.add('is-error');
+        if (etat === 'disabled') card.classList.add('is-disabled');
+
+        // Badge
+        const configs = {
+            active:   { badge: 'badge-active',   dot: 'bg-emerald-400', label: 'Actif' },
+            disabled: { badge: 'badge-disabled',  dot: 'bg-gray-500',   label: 'Désactivé' },
+            error:    { badge: 'badge-error',     dot: 'bg-red-400',    label: 'Erreur' },
+        };
+        const cfg = configs[etat];
+        badge.className = `badge ${cfg.badge}`;
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full inline-block ${cfg.dot}"></span>${cfg.label}`;
+
+        // Bloc d'erreur
+        let errBlock = document.getElementById('error-' + nom);
+        if (erreur) {
+            if (!errBlock) {
+                const infoDiv = card.querySelector('.min-w-0 > div.min-w-0');
+                if (infoDiv) {
+                    infoDiv.insertAdjacentHTML('beforeend', `
+                        <button onclick="toggleError('${nom}')"
+                                class="mt-2 text-xs text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Voir l'erreur
+                        </button>
+                        <div class="error-block visible mt-2" id="error-${nom}">${escapeHtml(erreur)}</div>`
+                    );
+                }
+            } else {
+                errBlock.textContent = erreur;
+                errBlock.classList.add('visible');
+            }
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+</script>
+{% endblock %}

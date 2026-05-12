@@ -1,14 +1,16 @@
 .env
+.env-old
 .venv
+.opencode
 /build
 /dist
 SuperviseurDossiers.spec
-/__pycache__
-/tests/__pycache__
+**/__pycache__/
 superviseur.log
 
 # Custom plugins (not versioned)
 plugins/
 !plugins/.gitkeep
-*.bat
+test_notif.bat
 test_notifications.py
+design/

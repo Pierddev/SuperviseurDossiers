@@ -12,23 +12,35 @@ from db import (
     connecter_base_de_donnees,
     creer_scan,
     deconnecter_base_de_donnees,
+    detecter_dossiers_supprimes,
+    enregistrer_totaux_scan,
+    reset_statut_nouveaux_dossiers_racines,
     terminer_scan,
     traiter_dossiers_en_lot,
+    marquer_dossiers_comme_racines,
 )
 from fichiers import filtrer_dossiers_redondants, scanner_arborescence
 from notifications import envoyer_notif_teams
+
+SCAN_EN_COURS_ID: int | None = None
 
 
 def scanner() -> None:
     """
     Scanne tous les dossiers à partir des chemins racines définis dans .env.
     """
+    global SCAN_EN_COURS_ID
     connexion_mysql = None
     id_scan = None
     debut_scan = time.time()
     try:
         connexion_mysql = connecter_base_de_donnees()
+        if not connexion_mysql:
+            return
         id_scan = creer_scan(connexion_mysql)
+        if not id_scan:
+            return
+        SCAN_EN_COURS_ID = id_scan
 
         # Parse les chemins racines séparés par des virgules
         chemins_racines = os.getenv("CHEMINS_RACINES", "").split(",")
@@ -38,10 +50,16 @@ def scanner() -> None:
             c.strip() for c in os.getenv("CHEMINS_EXCLUS", "").split(",") if c.strip()
         ]
 
+        # Réinitialise le tag 'is_new' pour les dossiers appartenant aux racines actuelles
+        reset_statut_nouveaux_dossiers_racines(connexion_mysql, chemins_racines)
+
         nouveaux_dossiers = []
         dossiers_modifies = []
+        dossiers_supprimes = []
         taille_totale_scan = 0
         total_changement_taille = 0
+        total_dossiers_scannes = 0
+        taille_totale_racines_ko = 0
 
         for chemin_racine in chemins_racines:
             chemin_racine = chemin_racine.strip()
@@ -54,19 +72,43 @@ def scanner() -> None:
                 taille_scan,
                 changement_racine,
             ) = traiter_dossiers_en_lot(
-                connexion_mysql, dossiers_avec_tailles, chemin_racine
+                connexion_mysql, dossiers_avec_tailles, chemin_racine, id_scan
             )
             nouveaux_dossiers.extend(nouveaux)
             dossiers_modifies.extend(modifies)
             taille_totale_scan += taille_scan
             total_changement_taille += changement_racine
+            total_dossiers_scannes += len(dossiers_avec_tailles)
+            # Taille de la racine uniquement (inclut déjà ses enfants)
+            taille_totale_racines_ko += round(
+                dossiers_avec_tailles.get(chemin_racine, 0) / 1024
+            )
+
+            # Détection des dossiers supprimés pour cette racine
+            chemins_disque = set(dossiers_avec_tailles.keys())
+            supprimes = detecter_dossiers_supprimes(
+                connexion_mysql, chemins_disque, chemin_racine, id_scan
+            )
+            dossiers_supprimes.extend(supprimes)
+
+        # Enregistrer les totaux corrects dans la table scans
+        enregistrer_totaux_scan(
+            connexion_mysql, id_scan, total_dossiers_scannes, taille_totale_racines_ko
+        )
+
+        # Assurer que les dossiers racines sont bien marqués dans la BDD
+        marquer_dossiers_comme_racines(connexion_mysql, chemins_racines)
 
         # Filtre les dossiers parents redondants pour la notification
         nouveaux_dossiers = filtrer_dossiers_redondants(nouveaux_dossiers)
         dossiers_modifies = filtrer_dossiers_redondants(dossiers_modifies)
+        dossiers_supprimes = filtrer_dossiers_redondants(dossiers_supprimes)
+
+        # Convertir les totaux de Ko en Mo pour l'affichage dans la notification
+        total_changement_mo = round(total_changement_taille / 1024)
 
         # Construction du message pour la notification Teams
-        signe = "+" if total_changement_taille > 0 else ""
+        signe = "+" if total_changement_mo > 0 else ""
         message = "✅ **Scan terminé avec succès**"
 
         # Calcul de la durée du scan
@@ -82,7 +124,7 @@ def scanner() -> None:
             duree_formatee = f"{secondes}s"
 
         message += f"\n<br>📅 {datetime.now().strftime('%d/%m/%Y à %H:%M')} ⏱️ Durée du scan : {duree_formatee}"
-        message += f"\n<br>📊 **Résumé** : {len(nouveaux_dossiers) + len(dossiers_modifies)} changements détectés (Total {signe}{total_changement_taille} Mo) \n"
+        message += f"\n<br>📊 **Résumé** : {len(nouveaux_dossiers) + len(dossiers_modifies) + len(dossiers_supprimes)} changements détectés (Total {signe}{total_changement_mo} Mo) \n"
 
         # Seuil pour la mise en évidence par poids (5 * SEUIL_DEFAUT)
         seuil_poids = int(os.getenv("SEUIL_DEFAUT", 100)) * 5
@@ -110,19 +152,35 @@ def scanner() -> None:
                 )
             message += "\n```"
 
-        if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0:
+        if len(dossiers_supprimes) > 0:
+            # Filtre par seuil : ne notifier que les suppressions significatives
+            supprimes_notifies = [
+                d for d in dossiers_supprimes if d["taille"] > seuil_poids // 5
+            ]
+            if supprimes_notifies:
+                message += "\n<br>🗑️ **Dossiers supprimés**:\n```"
+                for dossier in supprimes_notifies:
+                    marqueur = "⚠️ " if dossier["taille"] > seuil_poids else "➖ "
+                    dossier["chemin"] = dossier["chemin"].replace("\\", " > ")
+                    message += (
+                        f"\n{marqueur}(- {dossier['taille']:>6} Mo)   {dossier['chemin']}"
+                    )
+                message += "\n```"
+
+        if len(nouveaux_dossiers) == 0 and len(dossiers_modifies) == 0 and len(dossiers_supprimes) == 0:
             message += "\n\nAucun dossier modifié ou nouveau"
 
-        terminer_scan(connexion_mysql, id_scan, "termine")
+        terminer_scan(connexion_mysql, id_scan, "completed")
         envoyer_notif_teams(message)
 
     except Exception as e:
-        # En cas d'erreur, marquer le scan comme "erreur" et notifier
+        # En cas d'erreur, marquer le scan comme "failed" et notifier
         envoyer_notif_teams(f"❌ Erreur critique durant le scan : {e}")
         if connexion_mysql and id_scan:
-            terminer_scan(connexion_mysql, id_scan, "erreur")
+            terminer_scan(connexion_mysql, id_scan, "failed")
 
     finally:
+        SCAN_EN_COURS_ID = None
         # Toujours se déconnecter de la BDD, même en cas d'erreur
         if connexion_mysql:
             deconnecter_base_de_donnees(connexion_mysql)

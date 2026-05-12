@@ -1,0 +1,20 @@
+name: "❓ Question"
+description: Ask a question or get help
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: "❔ Question"
+      description: What would you like to know?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: "📎 Context"
+      description: Any relevant background, what you've tried, or links to related docs/code.
+    validations:
+      required: false

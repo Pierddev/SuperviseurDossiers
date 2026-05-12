@@ -3,7 +3,14 @@ Module de gestion du système de fichiers.
 Calcul de tailles, listing de dossiers, exclusions.
 """
 
+import logging
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+logger = logging.getLogger(__name__)
+
+# Nombre de threads pour le calcul parallèle des tailles (configurable via .env)
+NB_THREADS_SCAN = int(os.getenv("NB_THREADS_SCAN", "8"))
 
 
 def calculer_taille_dossier(chemin_dossier: str) -> int:
@@ -40,7 +47,7 @@ def est_chemin_exclu(chemin: str, chemins_exclus: list[str]) -> bool:
 
 
 def lister_tous_les_dossier(
-    chemin_racine: str, chemins_exclus: list[str] = None
+    chemin_racine: str, chemins_exclus: list[str] | None = None
 ) -> list[str]:
     """
     Liste tous les dossiers à partir d'un chemin racine.
@@ -62,36 +69,95 @@ def lister_tous_les_dossier(
     return liste_des_dossiers
 
 
+def _calculer_taille_fichiers_dossier(
+    dossier: str, fichiers: list[str]
+) -> tuple[str, int]:
+    """
+    Calcule la taille totale des fichiers directs d'un seul dossier.
+    Utilisé comme unité de travail pour le ThreadPoolExecutor.
+    """
+    total = 0
+    for fichier in fichiers:
+        try:
+            total += os.path.getsize(os.path.join(dossier, fichier))
+        except (OSError, PermissionError):
+            pass
+    return dossier, total
+
+
 def scanner_arborescence(
-    chemin_racine: str, chemins_exclus: list[str] = None
+    chemin_racine: str, chemins_exclus: list[str] | None = None
 ) -> dict[str, int]:
     """
-    Parcourt l'arborescence en un seul pass (bottom-up) et retourne un dictionnaire
+    Parcourt l'arborescence en 3 phases et retourne un dictionnaire
     {chemin_dossier: taille_en_octets} incluant les sous-dossiers.
+
+    Optimisé pour les volumes Docker (latence I/O élevée par stat()) :
+      Phase 1 — Collecte rapide de la structure (topdown=True, prune les exclusions)
+      Phase 2 — Calcul parallèle des tailles fichiers (ThreadPoolExecutor)
+      Phase 3 — Agrégation bottom-up des tailles (parents = somme enfants)
     """
-    tailles = {}
+    # ── Phase 1 : Collecter la structure de l'arborescence ──────────
+    # topdown=True permet de couper (prune) les dossiers exclus AVANT
+    # de descendre dedans, contrairement à topdown=False qui les parcourt
+    # inutilement puis les ignore.
+    structure: dict[str, tuple[list[str], list[str]]] = {}
 
     for dossier, sous_dossiers, fichiers in os.walk(
-        chemin_racine, topdown=False, followlinks=False
+        chemin_racine, topdown=True, followlinks=False
     ):
-        # Vérifie si le dossier est exclu
         if chemins_exclus and est_chemin_exclu(dossier, chemins_exclus):
+            sous_dossiers.clear()  # Empêche os.walk de descendre dans ce dossier
             continue
 
-        # Calcule la taille des fichiers directs du dossier
-        taille_fichiers = 0
-        for fichier in fichiers:
-            try:
-                taille_fichiers += os.path.getsize(os.path.join(dossier, fichier))
-            except (OSError, PermissionError):
-                pass
+        # Filtre aussi les sous-dossiers exclus individuellement
+        if chemins_exclus:
+            sous_dossiers[:] = [
+                sd
+                for sd in sous_dossiers
+                if not est_chemin_exclu(os.path.join(dossier, sd), chemins_exclus)
+            ]
 
-        # Ajoute la taille des sous-dossiers (déjà calculés car topdown=False)
+        structure[dossier] = (list(fichiers), list(sous_dossiers))
+
+    logger.info(
+        "Phase 1 terminée : %d dossiers collectés pour %s",
+        len(structure),
+        chemin_racine,
+    )
+
+    # ── Phase 2 : Calculer les tailles fichiers en parallèle ───────
+    # Chaque thread calcule la taille des fichiers d'UN dossier.
+    # Les appels stat() à travers les volumes Docker ont une latence élevée,
+    # le multithreading permet de les exécuter simultanément.
+    tailles_directes: dict[str, int] = {}
+
+    with ThreadPoolExecutor(max_workers=NB_THREADS_SCAN) as executor:
+        futures = {
+            executor.submit(
+                _calculer_taille_fichiers_dossier, dossier, fichiers
+            ): dossier
+            for dossier, (fichiers, _) in structure.items()
+        }
+        for future in as_completed(futures):
+            dossier, taille = future.result()
+            tailles_directes[dossier] = taille
+
+    logger.info("Phase 2 terminée : tailles fichiers calculées en parallèle")
+
+    # ── Phase 3 : Agréger bottom-up (dossiers les plus profonds d'abord) ──
+    tailles: dict[str, int] = {}
+
+    for dossier in sorted(
+        structure.keys(), key=lambda d: d.count(os.sep), reverse=True
+    ):
+        _, sous_dossiers = structure[dossier]
         taille_sous_dossiers = sum(
             tailles.get(os.path.join(dossier, sd), 0) for sd in sous_dossiers
         )
+        tailles[dossier] = tailles_directes.get(dossier, 0) + taille_sous_dossiers
 
-        tailles[dossier] = taille_fichiers + taille_sous_dossiers
+    logger.info("Phase 3 terminée : agrégation bottom-up complète")
 
     return tailles
 

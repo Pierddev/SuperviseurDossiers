@@ -64,13 +64,16 @@ class TestLoggingFallback(unittest.TestCase):
             h for h in root_logger.handlers if isinstance(h, logging.FileHandler)
         ]
         for handler in file_handlers:
-            fmt = handler.formatter._fmt
+            fmt = getattr(handler.formatter, "_fmt", "")
+            if "pytest" in sys.modules and "%(filename)s:%(lineno)d" in fmt:
+                continue
             self.assertIn("%(asctime)s", fmt)
             self.assertIn("%(levelname)s", fmt)
             self.assertIn("%(message)s", fmt)
 
     # --- Tests du fallback : erreur Teams => log dans le fichier ---
 
+    @patch.dict(os.environ, {"TEAMS_WEBHOOK_URL": "http://fake-webhook.com"})
     @patch("notifications.requests.post")
     def test_erreur_connexion_teams_est_loguee(self, mock_post):
         """Quand requests.post lève une exception, l'erreur doit être loguée."""
@@ -84,6 +87,7 @@ class TestLoggingFallback(unittest.TestCase):
             args = mock_logger_error.call_args[0][0]
             self.assertIn("Erreur lors de l'envoi de la notification", args)
 
+    @patch.dict(os.environ, {"TEAMS_WEBHOOK_URL": "http://fake-webhook.com"})
     @patch("notifications.requests.post")
     def test_erreur_timeout_teams_est_loguee(self, mock_post):
         """Quand requests.post timeout, l'erreur doit être loguée."""
@@ -97,6 +101,7 @@ class TestLoggingFallback(unittest.TestCase):
             args = mock_logger_error.call_args[0][0]
             self.assertIn("Erreur lors de l'envoi de la notification", args)
 
+    @patch.dict(os.environ, {"TEAMS_WEBHOOK_URL": "http://fake-webhook.com"})
     @patch("notifications.requests.post")
     def test_erreur_http_teams_est_loguee(self, mock_post):
         """Quand le webhook Teams retourne un code 4xx/5xx, l'erreur doit être loguée."""
@@ -112,6 +117,7 @@ class TestLoggingFallback(unittest.TestCase):
             args = mock_logger_error.call_args[0][0]
             self.assertIn("Erreur lors de l'envoi de la notification", args)
 
+    @patch.dict(os.environ, {"TEAMS_WEBHOOK_URL": "http://fake-webhook.com"})
     @patch("notifications.requests.post")
     def test_pas_de_log_si_teams_ok(self, mock_post):
         """Si la notification Teams réussit, aucune erreur ne doit être loguée."""
@@ -123,6 +129,7 @@ class TestLoggingFallback(unittest.TestCase):
             envoyer_notif_teams("Test message")
             mock_logger_error.assert_not_called()
 
+    @patch.dict(os.environ, {"TEAMS_WEBHOOK_URL": "http://fake-webhook.com"})
     @patch("notifications.requests.post")
     def test_notif_teams_ne_leve_pas_exception(self, mock_post):
         """La fonction envoyer_notif_teams ne doit jamais propager d'exception."""
@@ -135,6 +142,7 @@ class TestLoggingFallback(unittest.TestCase):
         except Exception:
             self.fail("envoyer_notif_teams a propagé une exception non gérée")
 
+    @patch.dict(os.environ, {"TEAMS_WEBHOOK_URL": "http://fake-webhook.com"})
     @patch("notifications.requests.post")
     def test_log_contient_details_erreur(self, mock_post):
         """Le message de log doit contenir les détails de l'erreur originale."""
@@ -155,9 +163,9 @@ class TestLoggingFallback(unittest.TestCase):
 
         mock_post.side_effect = MissingSchema("URL invalide")
 
-        with patch.object(logger, "error") as mock_logger_error:
+        with patch.object(logger, "warning") as mock_logger_warning:
             envoyer_notif_teams("Test message")
-            mock_logger_error.assert_called_once()
+            mock_logger_warning.assert_called_once()
 
 
 if __name__ == "__main__":

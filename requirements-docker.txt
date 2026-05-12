@@ -1,0 +1,25 @@
+# requirements-docker.txt
+# Streamlined version for Docker (Linux) — without Windows-only dependencies
+#
+# Removed compared to requirements.txt:
+#   - altgraph         (PyInstaller helper, Windows)
+#   - pefile           (Windows PE format parser)
+#   - pyinstaller      (useless in Docker, we run python main.py)
+#   - pyinstaller-hooks-contrib  (same)
+#   - pywin32-ctypes   (Windows API)
+
+certifi==2026.4.22
+charset-normalizer==3.4.7
+idna==3.13
+mysql-connector-python==9.7.0
+packaging==26.2
+python-dotenv==1.2.2
+requests==2.33.1
+schedule==1.2.2
+setuptools==82.0.1
+urllib3==2.7.0
+openpyxl==3.1.5
+flask==3.1.3
+flask-login==0.6.3
+livereload==2.7.1
+types-requests==2.33.0.20260508
