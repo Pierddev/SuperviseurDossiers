@@ -173,6 +173,14 @@
                 </div>
                 <!-- Le canvas prend le reste de l'espace -->
                 <div class="flex-1 relative">
+                    <div id="chart-empty" class="hidden absolute inset-0 flex items-center justify-center">
+                        <div class="text-center">
+                            <svg class="w-8 h-8 text-gray-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            <p class="text-gray-500 text-sm">Aucune donnée pour la période sélectionnée.</p>
+                        </div>
+                    </div>
                     <canvas id="history-chart"></canvas>
                 </div>
             </div>
@@ -354,11 +362,27 @@ function renderChart(data, path) {
     document.getElementById('chart-loader').classList.add('hidden');
 
     if (!data || !data.labels || data.labels.length === 0) {
-        document.getElementById('placeholder').classList.remove('hidden');
+        document.getElementById('chart-container').classList.remove('hidden');
+        document.getElementById('chart-title').textContent = path;
+        document.getElementById('chart-empty').classList.remove('hidden');
+        if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+        document.getElementById('current-size').textContent = '—';
+        document.getElementById('size-delta').textContent = '—';
+        document.getElementById('size-delta').className = 'text-lg font-bold mt-0.5 text-gray-400';
+        document.getElementById('scan-count').textContent = '0';
+        let textPeriode = "30 derniers jours";
+        if (currentPeriode === "7") textPeriode = "7 derniers jours";
+        else if (currentPeriode === "365") textPeriode = "365 derniers jours";
+        else if (currentPeriode === "ytd") textPeriode = "cette année";
+        document.getElementById('table-title').textContent = "Historique détaillé (" + textPeriode + ")";
+        document.getElementById('history-table-body').innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Aucune donnée pour la période sélectionnée.</td></tr>';
+        paginationMeta = null;
+        renderPagination();
         return;
     }
 
     document.getElementById('chart-container').classList.remove('hidden');
+    document.getElementById('chart-empty').classList.add('hidden');
 
     const current = data.history_table[0].size_kb;
     const delta   = data.history_table[0].delta_kb;
