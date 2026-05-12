@@ -439,11 +439,12 @@ def get_enfants_dossier(parent_path: str) -> list[dict]:
         conn.close()
 
 
-def get_historique_dossier(id_folder: int, periode: str = "30") -> dict:
+def get_historique_dossier(id_folder: int, periode: str = "30", page: int = 1, per_page: int = 15) -> dict:
     """
     Retourne les données nécessaires au graphique Chart.js pour un dossier donné :
     - Les informations du dossier (chemin, is_new)
     - L'historique des tailles [{date, size_mb}] sur la période sélectionnée
+    - Pagination appliquée sur history_table
     """
     conn = get_connexion()
     if not conn:
@@ -538,11 +539,25 @@ def get_historique_dossier(id_folder: int, periode: str = "30") -> dict:
         # Le tableau HTML affichera du plus récent au plus ancien
         history_table.reverse()
 
+        # Pagination
+        total_count = len(history_table)
+        total_pages = max(1, (total_count + per_page - 1) // per_page)
+        page = max(1, min(page, total_pages))
+        start = (page - 1) * per_page
+        end = start + per_page
+        paginated_table = history_table[start:end]
+
         return {
             "dossier": dossier,
             "labels": labels,
             "data": data,
-            "history_table": history_table,
+            "history_table": paginated_table,
+            "pagination": {
+                "total_count": total_count,
+                "total_pages": total_pages,
+                "current_page": page,
+                "per_page": per_page,
+            },
         }
     except mysql.connector.Error:
         return {}
