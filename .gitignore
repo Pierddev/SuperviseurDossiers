@@ -1,6 +1,7 @@
 .env
 .env-old
 .venv
+.opencode
 /build
 /dist
 SuperviseurDossiers.spec
