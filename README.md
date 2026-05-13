@@ -2,6 +2,19 @@
 
 Script Python déployé sur **Windows Server** qui analyse automatiquement la taille de tous les dossiers d'un chemin racine, stocke les résultats dans une base de données **MariaDB** (historisation complète) et envoie des notifications **Microsoft Teams** en cas de changements importants.
 
+## 🖼️ Aperçu de l'interface
+
+L'application embarque une interface d'administration web (Flask) activable via `INTRANET_ENABLED=1`.
+
+| | |
+|---|---|
+| ![Dashboard](screenshots/dashboard.png) | ![Historique](screenshots/history.png) |
+| **Dashboard** — Vue d'ensemble des derniers scans | **Historique** — Arborescence et graphique d'évolution |
+| ![Scans](screenshots/scans.png) | ![Paramètres](screenshots/settings.png) |
+| **Scans** — Liste des scans avec détail par modale | **Paramètres** — Configuration complète de l'application |
+| ![Plugins](screenshots/plugins.png) | ![Connexion](screenshots/login.png) |
+| **Plugins** — Gestion et activation des plugins | **Connexion** — Page d'authentification |
+
 ## 📑 Sommaire
 
 - [Fonctionnalités](#-fonctionnalités)
