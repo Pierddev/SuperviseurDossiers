@@ -16,7 +16,7 @@ packaging==26.2
 python-dotenv==1.2.2
 requests==2.34.2
 schedule==1.2.2
-setuptools==82.0.1
+setuptools==83.0.0
 urllib3==2.7.0
 openpyxl==3.1.5
 flask==3.1.3
