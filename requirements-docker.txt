@@ -9,7 +9,7 @@
 #   - pywin32-ctypes   (Windows API)
 
 certifi==2026.6.17
-charset-normalizer==3.4.7
+charset-normalizer==3.4.9
 idna==3.18
 mysql-connector-python==9.7.0
 packaging==26.2
