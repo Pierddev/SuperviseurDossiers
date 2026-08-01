@@ -2,7 +2,7 @@ altgraph==0.17.5
 certifi==2026.7.22
 charset-normalizer==3.4.9
 idna==3.18
-mysql-connector-python==9.7.0
+mysql-connector-python==26.7.0
 packaging==26.2
 pefile==2024.8.26
 pyinstaller==6.21.0
