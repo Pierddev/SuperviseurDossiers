@@ -8,7 +8,7 @@
 #   - pyinstaller-hooks-contrib  (same)
 #   - pywin32-ctypes   (Windows API)
 
-certifi==2026.7.22
+certifi==2026.10.18
 charset-normalizer==3.5.1
 idna==3.19
 mysql-connector-python==26.7.0
